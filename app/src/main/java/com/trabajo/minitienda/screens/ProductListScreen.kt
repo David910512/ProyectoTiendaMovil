@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.trabajo.minitienda.ui.components.*
 import com.trabajo.minitienda.ui.theme.*
-import com.trabajo.minitienda.data.Product
+import com.trabajo.minitienda.data.model.Product
 import com.trabajo.minitienda.data.mockProducts
 
 @Composable
