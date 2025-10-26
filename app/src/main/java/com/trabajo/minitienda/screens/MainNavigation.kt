@@ -16,7 +16,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.room.Room
 import com.trabajo.minitienda.data.database.AppDatabase
+import com.trabajo.minitienda.repository.CategoryRepository
 import com.trabajo.minitienda.repository.ProductRepository
+import com.trabajo.minitienda.viewmodel.CategoryViewModel
+import com.trabajo.minitienda.viewmodel.CategoryViewModelFactory
 import com.trabajo.minitienda.viewmodel.ProductViewModel
 import com.trabajo.minitienda.viewmodel.ProductViewModelFactory
 
@@ -33,7 +36,7 @@ fun MainNavigation() {
         value = Room.databaseBuilder(
             context,
             AppDatabase::class.java,
-            "productos_db"
+            "minitienda.db"
         ).build()
     }
 
@@ -52,11 +55,17 @@ fun MainNavigation() {
     // Create a single ViewModel instance scoped to the activity/composition
     val productViewModel: ProductViewModel = viewModel(factory = factory)
 
+    //repo + factory + VM de categoría
+    val categoryRepository = remember { CategoryRepository(db.categoryDao()) }
+    val categoryFactory = remember { CategoryViewModelFactory(categoryRepository) }
+    val categoryViewModel: CategoryViewModel = viewModel(factory = categoryFactory)
+
+
     NavHost(navController = navController, startDestination = "dashboard") {
         composable("dashboard") { DashboardScreen(navController) }
-        composable("products") { ProductListScreen(navController) }
+        composable("products") { ProductListScreen(navController,productViewModel) }
         composable("product_registration") {
-            ProductRegistrationScreen(navController, productViewModel)
+            ProductRegistrationScreen(navController, productViewModel, categoryViewModel)
         }
 
         composable("sales") { SalesScreen(navController) }

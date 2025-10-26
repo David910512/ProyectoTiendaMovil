@@ -5,15 +5,14 @@ import com.trabajo.minitienda.data.dao.ProductDao
 
 class ProductRepository(private val productDao: ProductDao) {
 
-    suspend fun insertProduct(product: Product) {
-        productDao.insertProduct(product)
-    }
+    fun observeAllProducts() = productDao.observeAllProducts()
 
-    suspend fun getAllProducts(): List<Product> {
-        return productDao.getAllProducts()
-    }
+    suspend fun upsertByCode(p: Product) = productDao.upsertByCode(p)
 
-    suspend fun deleteProduct(product: Product) {
-        productDao.deleteProduct(product)
-    }
+    suspend fun deleteProduct(p: Product) = productDao.deleteProduct(p)
+
+    suspend fun updateProduct(p: Product) = productDao.updateProduct(p)
+
+    // (Opcional) utilidad de diagnóstico
+    suspend fun countAll(): Int = productDao.countAll()
 }

@@ -1,20 +1,41 @@
 package com.trabajo.minitienda.data.dao
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.Query
+
+import androidx.room.*
 import com.trabajo.minitienda.data.model.Product
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProductDao {
 
-    @Insert
-    suspend fun insertProduct(product: Product)
+    // --- LECTURA REACTIVA ---
+    @Query("SELECT * FROM producto ORDER BY name ASC")
+    fun observeAllProducts(): Flow<List<Product>>
 
-    @Query("SELECT * FROM producto")
-    suspend fun getAllProducts(): List<Product>
+    // --- DIAGNÓSTICO: CUENTA ---
+    @Query("SELECT COUNT(*) FROM producto")
+    suspend fun countAll(): Int
 
-    @Delete
-    suspend fun deleteProduct(product: Product)
+    // --- CRUD BÁSICO ---
+    @Delete suspend fun deleteProduct(product: Product)
+    @Update suspend fun updateProduct(product: Product)
+
+    // --- UPSERT POR 'code' ---
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(product: Product): Long
+
+    @Query("""
+        UPDATE producto
+        SET name = :name, price = :price, stock = :stock, descripcion = :desc
+        WHERE code = :code
+    """)
+    suspend fun updateByCode(name: String, price: Double, stock: Int, desc: String, code: String): Int
+
+    @Transaction
+    suspend fun upsertByCode(p: Product) {
+        val id = insertIgnore(p)
+        if (id == -1L) {
+            updateByCode(p.name, p.price, p.stock, p.descripcion, p.code)
+        }
+    }
 }
