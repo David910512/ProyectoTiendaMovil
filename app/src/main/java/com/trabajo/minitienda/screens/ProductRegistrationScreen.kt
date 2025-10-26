@@ -5,25 +5,30 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.trabajo.minitienda.data.model.Product
 import com.trabajo.minitienda.ui.components.*
 import com.trabajo.minitienda.ui.theme.*
+import com.trabajo.minitienda.viewmodel.ProductViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductRegistrationScreen(navController: NavController) {
-    // Static example values (no editable logic)
-    val nombre = "Arroz Extra"
-    val codigo = "PRD001"
-    val precio = "4.50"
-    val stock = "50"
-    val descripcion = "Arroz de calidad extra, presentación 1kg."
+fun ProductRegistrationScreen(
+    navController: NavController,
+    productViewModel: ProductViewModel,
+) {
+
+    var nombre by remember { mutableStateOf("") }
+    var codigo by remember { mutableStateOf("") }
+    var precio by remember { mutableStateOf("") }
+    var stock by remember { mutableStateOf("") }
+    var descripcion by remember { mutableStateOf("") }
 
     PageLayout(
         title = "Nuevo Producto",
@@ -35,8 +40,7 @@ fun ProductRegistrationScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            ImageUploadSection()
-            
+
             AppCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -47,62 +51,68 @@ fun ProductRegistrationScreen(navController: NavController) {
                         text = "Información del Producto",
                         style = MaterialTheme.typography.titleMedium
                     )
-                    
+
+                    // 🔹 Campos reales con estados
                     Column(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        FormField(
+                        TextField(
                             value = nombre,
-                            onValueChange = {},
-                            label = "Nombre del Producto",
-                            placeholder = "Ej: Arroz Extra",
-                            readOnly = true
+                            onValueChange = { nombre = it },
+                            label = { Text("Nombre del Producto") },
+                            placeholder = { Text("Ej: Arroz Extra") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
                         )
-                        
-                        FormField(
+
+                        TextField(
                             value = codigo,
-                            onValueChange = {},
-                            label = "Código",
-                            placeholder = "Ej: PRD001",
-                            readOnly = true
+                            onValueChange = { codigo = it },
+                            label = { Text("Código") },
+                            placeholder = { Text("Ej: PRD001") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
                         )
-                        
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            FormField(
+                            TextField(
                                 value = precio,
-                                onValueChange = {},
-                                label = "Precio (S/)",
-                                placeholder = "0.00",
+                                onValueChange = { precio = it },
+                                label = { Text("Precio (S/)") },
+                                placeholder = { Text("0.00") },
                                 modifier = Modifier.weight(1f),
-                                readOnly = true
+                                singleLine = true
                             )
-                            
-                            FormField(
+
+                            TextField(
                                 value = stock,
-                                onValueChange = {},
-                                label = "Stock Inicial",
-                                placeholder = "0",
+                                onValueChange = { stock = it },
+                                label = { Text("Stock Inicial") },
+                                placeholder = { Text("0") },
                                 modifier = Modifier.weight(1f),
-                                readOnly = true
+                                singleLine = true
                             )
                         }
-                        
-                        FormField(
+
+                        TextField(
                             value = descripcion,
-                            onValueChange = {},
-                            label = "Descripción",
-                            placeholder = "Describe el producto...",
-                            singleLine = false,
-                            modifier = Modifier.height(100.dp),
-                            readOnly = true
+                            onValueChange = { descripcion = it },
+                            label = { Text("Descripción") },
+                            placeholder = { Text("Describe el producto...") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            singleLine = false
                         )
                     }
                 }
             }
-            
+            ImageUploadSection()
+
+            // 🔹 Botones
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -113,12 +123,28 @@ fun ProductRegistrationScreen(navController: NavController) {
                 ) {
                     Text("Cancelar")
                 }
-                
+
                 PrimaryButton(
                     text = "Guardar Producto",
-                    onClick = { /* TODO */ },
+                    onClick = {
+                        if (nombre.isNotBlank() && codigo.isNotBlank() && precio.isNotBlank() && stock.isNotBlank()) {
+                            val product = Product(
+                                name = nombre,
+                                code = codigo,
+                                price = precio.toDoubleOrNull() ?: 0.0,
+                                stock = stock.toIntOrNull() ?: 0,
+                                descripcion = descripcion
+                            )
+                            productViewModel.addProduct(product)
+                            println(" Producto guardado correctamente: $product")
+                            navController.navigateUp()
+                        } else {
+                            println("Por favor llena todos los campos.")
+                        }
+                    },
                     modifier = Modifier.weight(1f)
                 )
+
             }
         }
     }
@@ -160,43 +186,12 @@ private fun ImageUploadSection() {
                     )
                 }
             }
-            
+
             Text(
                 text = "Formatos soportados: JPG, PNG",
                 style = MaterialTheme.typography.bodySmall,
                 color = SecondaryText
             )
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FormField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    placeholder: String,
-    modifier: Modifier = Modifier,
-    singleLine: Boolean = true,
-    readOnly: Boolean = false
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium
-        )
-        TextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(placeholder) },
-            readOnly = readOnly,
-            shape = MaterialTheme.shapes.medium,
-            singleLine = singleLine
-        )
     }
 }
