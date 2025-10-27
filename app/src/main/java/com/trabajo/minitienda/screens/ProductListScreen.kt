@@ -9,9 +9,11 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.trabajo.minitienda.data.model.Product
@@ -123,20 +125,13 @@ private fun ProductCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = product.name,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = product.code,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SecondaryText
-                    )
+                    Text(product.name, style = MaterialTheme.typography.titleMedium)
+                    Text(product.code, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
                 }
                 StockBadge(product.stock)
             }
@@ -144,20 +139,13 @@ private fun ProductCard(
             HorizontalDivider()
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "Precio: S/ ${product.price}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "Stock: ${product.stock} unidades",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SecondaryText
-                    )
+                    Text("Precio: S/ ${"%.2f".format(product.price)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Stock: ${product.stock} unidades", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
