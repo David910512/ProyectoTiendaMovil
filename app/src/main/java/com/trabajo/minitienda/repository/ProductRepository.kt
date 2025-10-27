@@ -13,6 +13,5 @@ class ProductRepository(private val productDao: ProductDao) {
 
     suspend fun updateProduct(p: Product) = productDao.updateProduct(p)
 
-    // (Opcional) utilidad de diagnóstico
     suspend fun countAll(): Int = productDao.countAll()
 }

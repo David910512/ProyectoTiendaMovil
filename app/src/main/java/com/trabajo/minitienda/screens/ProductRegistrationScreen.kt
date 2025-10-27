@@ -3,10 +3,12 @@ package com.trabajo.minitienda.screens
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -29,15 +31,6 @@ import com.trabajo.minitienda.ui.theme.SecondaryText
 import com.trabajo.minitienda.viewmodel.CategoryViewModel
 import com.trabajo.minitienda.viewmodel.ProductViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.ExposedDropdownMenuBox
-
-
-import androidx.compose.material3.DropdownMenuItem
-
-// Dropdown expuesto
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -47,26 +40,24 @@ import androidx.compose.material3.DropdownMenuItem
 fun ProductRegistrationScreen(
     navController: NavController,
     productViewModel: ProductViewModel,
-    categoryViewModel: CategoryViewModel
+    categoryViewModel: CategoryViewModel,
+    product: Product? = null // null para nuevo producto, Product para edición
 ) {
     // ---- estado de formulario ----
-    var nombre by rememberSaveable { mutableStateOf("") }
-    var codigo by rememberSaveable { mutableStateOf("") }
-    var precioTxt by rememberSaveable { mutableStateOf("") }
-    var stockTxt by rememberSaveable { mutableStateOf("") }
-    var descripcion by rememberSaveable { mutableStateOf("") }
+    var nombre by remember { mutableStateOf(product?.name ?: "") }
+    var codigo by remember { mutableStateOf(product?.code ?: "") }
+    var precioTxt by remember { mutableStateOf(product?.price?.toString() ?: "") }
+    var stockTxt by remember { mutableStateOf(product?.stock?.toString() ?: "") }
+    var descripcion by remember { mutableStateOf(product?.descripcion ?: "") }
 
     // categoría (texto que escribe/selecciona el usuario)
     var categoriaNombre by rememberSaveable { mutableStateOf("") }
     var catExpanded by remember { mutableStateOf(false) }
 
-
-
-
     val precio = remember(precioTxt) { precioTxt.replace(',', '.').trim().toDoubleOrNull() }
-    val stock  = remember(stockTxt) { stockTxt.trim().toIntOrNull() }
+    val stock = remember(stockTxt) { stockTxt.trim().toIntOrNull() }
     val esErrorPrecio = precioTxt.isNotBlank() && precio == null
-    val esErrorStock  = stockTxt.isNotBlank() && stock == null
+    val esErrorStock = stockTxt.isNotBlank() && stock == null
 
     // ---- infra ----
     val ctx = LocalContext.current

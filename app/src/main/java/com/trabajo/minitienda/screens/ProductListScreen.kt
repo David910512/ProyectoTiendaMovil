@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.trabajo.minitienda.data.database.AppDbProvider
 import com.trabajo.minitienda.data.model.Product
 import com.trabajo.minitienda.ui.components.AppCard
 import com.trabajo.minitienda.ui.components.PageLayout
@@ -25,41 +24,18 @@ import com.trabajo.minitienda.ui.theme.ErrorColor
 import com.trabajo.minitienda.ui.theme.PrimaryGreen
 import com.trabajo.minitienda.ui.theme.SecondaryText
 import com.trabajo.minitienda.ui.theme.WarningColor
-import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.foundation.lazy.*
 import com.trabajo.minitienda.viewmodel.ProductViewModel
 
 @Composable
 fun ProductListScreen(
     navController: NavController,
     productViewModel: ProductViewModel
-    ) {
-    val ctx = LocalContext.current
-    val dao = remember { AppDbProvider.get(ctx).productDao() }
-
-    // 👇 Lee DIRECTO de Room (sin ViewModel)
-    val products by dao.observeAllProducts().collectAsState(initial = emptyList())
-
-    // 🔧 BLOQUE TEMPORAL DE SEMILLA (AQUÍ MISMO).
-    // Si la tabla está vacía, insertamos 1 producto para confirmar que se pinta.
-    LaunchedEffect(Unit) {
-        val c = dao.countAll()
-        if (c == 0) {
-            dao.upsertByCode(
-                Product(
-                    name = "Producto de prueba",
-                    code = "PRUEBA_${System.currentTimeMillis()}",
-                    price = 1.0,
-                    stock = 1,
-                    descripcion = "Seed"
-                )
-            )
-        }
-    }
+) {
+    val products by productViewModel.products.collectAsState()
 
     PageLayout(
         title = "Productos",
-        onMenuClick = { /* drawer si lo usas */ }
+        onMenuClick = { /* TODO */ }
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -69,8 +45,8 @@ fun ProductListScreen(
             ActionsRow(navController = navController, count = products.size)
             ProductList(
                 products = products,
-                onDelete = { /* dao.deleteProduct(it) si quieres eliminar */ },
-                onEdit = { /* TODO: ir a edición */ }
+                onDelete = { product -> productViewModel.deleteProduct(product) },
+                onEdit = { product -> navController.navigate("product_registration/${product.id}") }
             )
         }
     }
@@ -116,7 +92,10 @@ private fun ProductList(
     onEdit: (Product) -> Unit
 ) {
     if (products.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
             Text("No hay productos aún")
         }
     } else {
@@ -138,8 +117,13 @@ private fun ProductCard(
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
-    AppCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    AppCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -151,7 +135,9 @@ private fun ProductCard(
                 }
                 StockBadge(product.stock)
             }
-            Divider()
+
+            HorizontalDivider()
+
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -161,11 +147,25 @@ private fun ProductCard(
                     Text("Precio: S/ ${"%.2f".format(product.price)}", style = MaterialTheme.typography.bodyMedium)
                     Text("Stock: ${product.stock} unidades", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IconButton(onClick = onEdit)  { Icon(Icons.Default.Edit,   contentDescription = "Editar",   tint = PrimaryGreen) }
-                    IconButton(onClick = onDelete){ Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = ErrorColor) }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar",
+                            tint = PrimaryGreen
+                        )
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar",
+                            tint = ErrorColor
+                        )
+                    }
                 }
-            }
+            }   
         }
     }
 }
@@ -177,7 +177,10 @@ private fun StockBadge(stock: Int) {
         stock < 10 -> WarningColor to Color.White
         else -> PrimaryGreen to Color.White
     }
-    Surface(color = bg, shape = MaterialTheme.shapes.small) {
+    Surface(
+        color = bg,
+        shape = MaterialTheme.shapes.small
+    ) {
         Text(
             text = when {
                 stock == 0 -> "Sin Stock"
@@ -190,3 +193,4 @@ private fun StockBadge(stock: Int) {
         )
     }
 }
+
