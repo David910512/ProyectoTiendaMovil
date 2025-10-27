@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.room.Room
 import com.trabajo.minitienda.data.database.AppDatabase
@@ -62,12 +64,22 @@ fun MainNavigation() {
 
 
     NavHost(navController = navController, startDestination = "dashboard") {
-        composable("dashboard") { DashboardScreen(navController) }
-        composable("products") { ProductListScreen(navController,productViewModel) }
+        composable("dashboard") { DashboardScreen(navController, productViewModel) }
+        composable("products") { ProductListScreen(navController, productViewModel) }
+        composable(
+            route = "product_registration/{productId}",
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId")?.toIntOrNull()
+            // Find product if ID is provided
+            val product = if (productId != null) {
+                productViewModel.products.value.find { it.id == productId }
+            } else null
+            ProductRegistrationScreen(navController, productViewModel, categoryViewModel, product)
+        }
         composable("product_registration") {
             ProductRegistrationScreen(navController, productViewModel, categoryViewModel)
         }
-
         composable("sales") { SalesScreen(navController) }
         composable("purchases") { PurchasesScreen(navController) }
         composable("cash_closure") { CashClosureScreen(navController) }

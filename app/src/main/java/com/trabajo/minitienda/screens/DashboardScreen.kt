@@ -15,7 +15,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
+import com.trabajo.minitienda.viewmodel.ProductViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,7 +31,10 @@ import com.trabajo.minitienda.ui.theme.SecondaryText
 import com.trabajo.minitienda.ui.theme.WarningColor
 
 @Composable
-fun DashboardScreen(navController: NavController) {
+fun DashboardScreen(
+    navController: NavController,
+    productViewModel: ProductViewModel
+) {
     PageLayout(
         title = "Panel de Control",
         onMenuClick = { /* abrir drawer */ }
@@ -40,16 +45,19 @@ fun DashboardScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DashboardStatsGrid()
+            DashboardStatsGrid(productViewModel)
 
-            DashboardLowStockBanner(
-                lowStockItems = listOf(
-                    "Leche Gloria Entera 1L" to 3,
-                    "Arroz Superior 1kg" to 5,
-                    "Aceite Primor 1L" to 2
-                ),
-                onSeeProducts = { navController.navigate("products") }
-            )
+            val products = productViewModel.products.collectAsState().value
+            val lowStockItems = products
+                .filter { it.stock < 10 } // productos con menos de 10 unidades
+                .map { it.name to it.stock }
+            
+            if (lowStockItems.isNotEmpty()) {
+                DashboardLowStockBanner(
+                    lowStockItems = lowStockItems,
+                    onSeeProducts = { navController.navigate("products") }
+                )
+            }
 
             DashboardQuickActionsGrid(
                 onClick = { route -> navController.navigate(route) }
@@ -61,11 +69,12 @@ fun DashboardScreen(navController: NavController) {
 /* ------------------------- MÉTRICAS ------------------------- */
 
 @Composable
-private fun DashboardStatsGrid() {
+private fun DashboardStatsGrid(productViewModel: ProductViewModel) {
+    val products = productViewModel.products.collectAsState()
     val stats = listOf(
         DashboardStat("Ventas del Día", "S/ 6,350", "+12% desde ayer", Icons.Default.AttachMoney),
         DashboardStat("Productos Vendidos", "47", "En 23 transacciones", Icons.Default.ShoppingCart),
-        DashboardStat("Total Productos", "156", "En inventario", Icons.Default.Inventory),
+        DashboardStat("Total Productos", products.value.size.toString(), "En inventario", Icons.Default.Inventory),
         DashboardStat("Ganancia Neta", "S/ 4,230", "Hoy", Icons.Default.TrendingUp)
     )
 

@@ -4,7 +4,7 @@ import com.trabajo.minitienda.data.dao.CategoryDao
 
 class CategoryRepository(private val dao: CategoryDao) {
     fun observeAll() = dao.observeAll()
-    suspend fun add(nombre: String) = dao.upsertByName(nombre)   // ← usa upsertByName
-    suspend fun delete(id: Long) = dao.deleteById(id)            // ← deleteById
+    suspend fun add(nombre: String) = dao.upsertByName(nombre)
+    suspend fun delete(id: Long) = dao.deleteById(id)
 }
 
