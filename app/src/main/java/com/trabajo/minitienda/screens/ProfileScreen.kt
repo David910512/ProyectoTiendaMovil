@@ -20,7 +20,9 @@ import com.trabajo.minitienda.ui.components.*
 import com.trabajo.minitienda.ui.theme.*
 
 @Composable
-fun ProfileScreen(navController: NavController) {
+fun ProfileScreen(
+    navController: NavController,
+    onMenuClick: () -> Unit ) {
     PageLayout(
         title = "Perfil",
         onMenuClick = { /* TODO: Open drawer */ }

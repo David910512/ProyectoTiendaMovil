@@ -18,10 +18,10 @@ import com.trabajo.minitienda.data.PurchaseStatus
 import com.trabajo.minitienda.data.Purchase
 
 @Composable
-fun PurchasesScreen(navController: NavController) {
+fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
     PageLayout(
         title = "Compras",
-        onMenuClick = { /* TODO: Open drawer */ }
+        onMenuClick = OnMenuClick
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

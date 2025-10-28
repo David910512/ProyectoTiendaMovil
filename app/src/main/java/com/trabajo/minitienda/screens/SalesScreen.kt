@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 fun SalesScreen(
     navController: NavController,
     vm: SalesViewModel
+    onMenuClick: () -> Unit
 ) {
     val cart by vm.cart.collectAsState()
     val total by vm.total.collectAsState()

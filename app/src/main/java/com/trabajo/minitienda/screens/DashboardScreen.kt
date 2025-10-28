@@ -33,11 +33,12 @@ import com.trabajo.minitienda.ui.theme.WarningColor
 @Composable
 fun DashboardScreen(
     navController: NavController,
-    productViewModel: ProductViewModel
+    productViewModel: ProductViewModel,
+    onMenuClick: () -> Unit 
 ) {
     PageLayout(
         title = "Panel de Control",
-        onMenuClick = { /* abrir drawer */ }
+        onMenuClick = onMenuClick 
     ) {
         Column(
             modifier = Modifier
@@ -51,7 +52,7 @@ fun DashboardScreen(
             val lowStockItems = products
                 .filter { it.stock < 10 } // productos con menos de 10 unidades
                 .map { it.name to it.stock }
-            
+
             if (lowStockItems.isNotEmpty()) {
                 DashboardLowStockBanner(
                     lowStockItems = lowStockItems,
