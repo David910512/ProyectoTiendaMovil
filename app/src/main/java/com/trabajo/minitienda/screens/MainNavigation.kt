@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.room.Room
 import com.trabajo.minitienda.data.database.AppDatabase
@@ -67,7 +69,6 @@ fun MainNavigation() {
         composable("product_registration") {
             ProductRegistrationScreen(navController, productViewModel, categoryViewModel)
         }
-
         composable("sales") { SalesScreen(navController) }
         composable("purchases") { PurchasesScreen(navController) }
         composable("cash_closure") { CashClosureScreen(navController) }

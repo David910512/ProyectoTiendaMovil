@@ -165,7 +165,7 @@ private fun ProductCard(
                     IconButton(onClick = onEdit)  { Icon(Icons.Default.Edit,   contentDescription = "Editar",   tint = PrimaryGreen) }
                     IconButton(onClick = onDelete){ Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = ErrorColor) }
                 }
-            }
+            }   
         }
     }
 }
