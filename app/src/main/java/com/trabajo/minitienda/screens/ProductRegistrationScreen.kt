@@ -41,7 +41,7 @@ fun ProductRegistrationScreen(
     navController: NavController,
     productViewModel: ProductViewModel,
     categoryViewModel: CategoryViewModel,
-    product: Product? = null // null para nuevo producto, Product para edición
+    product: Product? = null
 ) {
     // ---- estado de formulario ----
     var nombre by remember { mutableStateOf(product?.name ?: "") }

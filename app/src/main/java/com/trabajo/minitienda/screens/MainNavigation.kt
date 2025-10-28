@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,10 +21,13 @@ import androidx.room.Room
 import com.trabajo.minitienda.data.database.AppDatabase
 import com.trabajo.minitienda.repository.CategoryRepository
 import com.trabajo.minitienda.repository.ProductRepository
+import com.trabajo.minitienda.repository.SaleRepository
 import com.trabajo.minitienda.viewmodel.CategoryViewModel
 import com.trabajo.minitienda.viewmodel.CategoryViewModelFactory
 import com.trabajo.minitienda.viewmodel.ProductViewModel
 import com.trabajo.minitienda.viewmodel.ProductViewModelFactory
+import com.trabajo.minitienda.viewmodel.SalesViewModel
+import com.trabajo.minitienda.viewmodel.SalesViewModelFactory
 
 
 @Composable
@@ -63,6 +67,11 @@ fun MainNavigation() {
     val categoryViewModel: CategoryViewModel = viewModel(factory = categoryFactory)
 
 
+    //Venta
+    val saleRepository = remember { SaleRepository(db, db.saleDao(), db.productDao()) }
+    val salesFactory = remember { SalesViewModelFactory(saleRepository, db.productDao()) }
+    val salesViewModel: SalesViewModel = viewModel(factory = salesFactory)
+
     NavHost(navController = navController, startDestination = "dashboard") {
         composable("dashboard") { DashboardScreen(navController, productViewModel) }
         composable("products") { ProductListScreen(navController, productViewModel) }
@@ -72,15 +81,16 @@ fun MainNavigation() {
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId")?.toIntOrNull()
             // Find product if ID is provided
-            val product = if (productId != null) {
-                productViewModel.products.value.find { it.id == productId }
-            } else null
+            val products by productViewModel.products
+                .collectAsState(initial = emptyList())
+
+            val product = productId?.let { id -> products.find { it.id == id } }
             ProductRegistrationScreen(navController, productViewModel, categoryViewModel, product)
         }
         composable("product_registration") {
             ProductRegistrationScreen(navController, productViewModel, categoryViewModel)
         }
-        composable("sales") { SalesScreen(navController) }
+        composable("sales") { SalesScreen(navController, salesViewModel) }
         composable("purchases") { PurchasesScreen(navController) }
         composable("cash_closure") { CashClosureScreen(navController) }
         composable("profile") { ProfileScreen(navController) }

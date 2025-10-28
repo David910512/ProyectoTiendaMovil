@@ -31,6 +31,13 @@ interface ProductDao {
     """)
     suspend fun updateByCode(name: String, price: Double, stock: Int, desc: String, code: String): Int
 
+    @Query("SELECT * FROM producto WHERE code = :code LIMIT 1")
+    suspend fun findByCode(code: String): Product?
+
+    @Query("UPDATE producto SET stock = stock - :qty WHERE id = :productId AND stock >= :qty")
+    suspend fun decreaseStock(productId: Int, qty: Int): Int
+
+
     @Transaction
     suspend fun upsertByCode(p: Product) {
         val id = insertIgnore(p)
