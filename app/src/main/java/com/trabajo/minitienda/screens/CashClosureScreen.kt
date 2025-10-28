@@ -18,13 +18,16 @@ import com.trabajo.minitienda.ui.components.PrimaryButton
 import com.trabajo.minitienda.ui.theme.*
 
 @Composable
-fun CashClosureScreen(navController: NavController) {
+fun CashClosureScreen(
+    navController: NavController,
+    onMenuClick: () -> Unit // <--- ¡AQUÍ ESTÁ EL CAMBIO!
+) {
     // Static example value (no editable logic)
     val efectivoContado = "S/ 1,850.00"
 
     PageLayout(
         title = "Cierre de Caja",
-        onMenuClick = { /* TODO: Open drawer */ }
+        onMenuClick = onMenuClick // <--- Ahora esto funciona
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
