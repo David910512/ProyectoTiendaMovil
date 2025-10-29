@@ -45,3 +45,8 @@ data class SaleWithDetails(
     )
     val items: List<SaleDetail>
 )
+
+data class DailySaleSummary(
+    val saleDate: String,
+    val total: Double
+)

@@ -18,26 +18,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.trabajo.minitienda.ui.components.ActividadSemanalChart
 import com.trabajo.minitienda.ui.components.AppCard
 import com.trabajo.minitienda.ui.components.PageLayout
 import com.trabajo.minitienda.ui.theme.PrimaryGreen
 import com.trabajo.minitienda.ui.theme.SecondaryText
 import com.trabajo.minitienda.ui.theme.WarningColor
-import com.trabajo.minitienda.viewmodel.ProductViewModel
-import com.trabajo.minitienda.viewmodel.DashboardViewModel
-import java.text.SimpleDateFormat
-import java.util.*
+import com.trabajo.minitienda.viewmodel.SalesViewModel
 
 @Composable
 fun DashboardScreen(
     navController: NavController,
     productViewModel: ProductViewModel,
-    dashboardViewModel: DashboardViewModel,
-    onMenuClick: () -> Unit = {}
+    salesViewModel: SalesViewModel,
+    onMenuClick: () -> Unit 
 ) {
     PageLayout(
         title = "Panel de Control",
-        onMenuClick = onMenuClick
+        onMenuClick = onMenuClick 
     ) {
         Column(
             modifier = Modifier
@@ -45,11 +43,9 @@ fun DashboardScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- MÉTRICAS (nuevo estilo) ---
-            DashboardMetricsSection(productViewModel, dashboardViewModel)
-
-            // --- BAJO STOCK ---
-            val products by productViewModel.products.collectAsState(initial = emptyList())
+            DashboardStatsGrid(productViewModel)
+            ActividadSemanalChart(salesViewModel = salesViewModel)
+            val products = productViewModel.products.collectAsState().value
             val lowStockItems = products
                 .filter { it.stock < 10 }
                 .sortedBy { it.stock }
@@ -414,3 +410,18 @@ private fun DashboardActionCard(
         }
     }
 }
+
+/* ------------------------- MODELOS LOCALES ------------------------- */
+
+private data class DashboardStat(
+    val title: String,
+    val value: String,
+    val helper: String,
+    val icon: ImageVector
+)
+
+private data class DashboardAction(
+    val title: String,
+    val route: String,
+    val icon: ImageVector
+)

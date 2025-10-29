@@ -24,39 +24,19 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PurchasesScreen(
-    navController: NavController,
-    vm: PurchasesViewModel,
-    sVm: SupplierViewModel,
-    onMenuClick: () -> Unit = {}
-) {
-    val suppliers by sVm.suppliers.collectAsState()
-    val cart by vm.draftCart.collectAsState()
-    val total by vm.draftTotal.collectAsState()
-
-
-
-
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    var selectedSupplierIdx by remember { mutableStateOf(-1) }
-    val selectedSupplier = suppliers.getOrNull(selectedSupplierIdx)
-
-    var nameOrCode by remember { mutableStateOf("") }
-    var qtyTxt by remember { mutableStateOf("1") }
-    var costTxt by remember { mutableStateOf("") }
-
-    var showSupplierManager by remember { mutableStateOf(false) }
-
-
-
-    // ---- Efectos de eventos ----
-    LaunchedEffect(Unit) {
-        vm.events.collect { msg -> snackbar.showSnackbar(msg) }
-    }
-    LaunchedEffect(Unit) {
-        sVm.events.collect { msg -> snackbar.showSnackbar(msg) }
+fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
+    PageLayout(
+        title = "Compras",
+        onMenuClick = OnMenuClick
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            StatsRow()
+            PurchaseFilters()
+            PurchaseList()
+        }
     }
 
     PageLayout(title = "Registrar Compra", onMenuClick = onMenuClick) {

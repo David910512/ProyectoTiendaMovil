@@ -42,7 +42,7 @@ fun ProductRegistrationScreen(
     productViewModel: ProductViewModel,
     categoryViewModel: CategoryViewModel,
     product: Product? = null,
-    onMenuClick: () -> Unit = {}
+    onMenuClick: () -> Unit 
 ) {
     // ---- estado de formulario ----
     var nombre by remember { mutableStateOf(product?.name ?: "") }

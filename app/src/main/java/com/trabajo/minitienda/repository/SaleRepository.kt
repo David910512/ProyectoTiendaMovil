@@ -6,6 +6,7 @@ import com.trabajo.minitienda.data.dao.ProductDao
 import com.trabajo.minitienda.data.dao.SaleDao
 import com.trabajo.minitienda.data.database.AppDatabase
 import com.trabajo.minitienda.data.model.*
+import kotlinx.coroutines.flow.Flow
 
 class SaleRepository(
     private val db: AppDatabase,
@@ -14,6 +15,10 @@ class SaleRepository(
 ) {
     data class CartItem(val product: Product, val qty: Int) {
         val subtotal: Double get() = product.price * qty
+    }
+
+    fun getWeeklySalesSummary(timestamp: Long): Flow<List<DailySaleSummary>> {
+        return db.saleDao().getWeeklySalesSummary(timestamp)
     }
 
     fun observeSales() = saleDao.observeSales()
