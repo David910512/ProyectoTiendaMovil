@@ -1,22 +1,28 @@
 package com.trabajo.minitienda.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.trabajo.minitienda.ui.components.*
-import com.trabajo.minitienda.ui.theme.*
-import com.trabajo.minitienda.data.mockPurchases
-import com.trabajo.minitienda.data.PurchaseStatus
-import com.trabajo.minitienda.data.Purchase
+import com.trabajo.minitienda.ui.components.AppCard
+import com.trabajo.minitienda.ui.components.PageLayout
+import com.trabajo.minitienda.ui.theme.ErrorColor
+import com.trabajo.minitienda.ui.theme.SecondaryText
+import com.trabajo.minitienda.viewmodel.PurchasesViewModel
+import com.trabajo.minitienda.viewmodel.SupplierViewModel
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
     PageLayout(
@@ -32,216 +38,302 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
             PurchaseList()
         }
     }
-}
 
-@Composable
-private fun StatsRow() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        AppCard(
-            modifier = Modifier.weight(1f)
-        ) {
+    PageLayout(title = "Registrar Compra", onMenuClick = onMenuClick) {
+        Box(Modifier.fillMaxSize()) {
+            // --- Scroll general ---
             Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 70.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "Compras del Mes",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "S/ 12,450.00",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Text(
-                    text = "84 compras realizadas",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
-                )
-            }
-        }
-        
-        AppCard(
-            modifier = Modifier.weight(1f)
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Proveedores Activos",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "12",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Text(
-                    text = "5 compras pendientes",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = WarningColor
-                )
-            }
-        }
-    }
-}
+                // ---------- Proveedor ----------
+                AppCard(Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Proveedor", style = MaterialTheme.typography.titleMedium)
+                            TextButton(onClick = { showSupplierManager = true }) { Text("Gestionar") }
+                        }
 
-@Composable
-private fun PurchaseFilters() {
-    Card {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Filtros a la izquierda
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = true,
-                    onClick = { /* TODO */ },
-                    label = { Text("Este Mes") }
-                )
-                FilterChip(
-                    selected = false,
-                    onClick = { /* TODO */ },
-                    label = { Text("Por Proveedor") }
-                )
-            }
-            
-            // Botón de nueva compra
-            PrimaryButton(
-                text = "Nueva Compra",
-                onClick = { /* TODO */ }
-            )
-        }
-    }
-}
+                        var expanded by remember { mutableStateOf(false) }
 
-@Composable
-private fun PurchaseList() {
-    AppCard(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Últimas Compras",
-                style = MaterialTheme.typography.titleMedium
-            )
-            
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(mockPurchases) { purchase ->
-                    PurchaseItem(purchase)
-                }
-            }
-        }
-    }
-}
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
+                        ) {
+                            OutlinedTextField(
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth(),
+                                value = selectedSupplier?.nombre ?: "",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Selecciona un proveedor") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                singleLine = true
+                            )
 
-@Composable
-private fun PurchaseItem(purchase: Purchase) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = purchase.supplier,
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Text(
-                    text = "Factura: ${purchase.invoiceNumber}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
-                )
-            }
-            
-            Text(
-                text = purchase.date,
-                style = MaterialTheme.typography.bodySmall,
-                color = SecondaryText
-            )
-        }
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "${purchase.items} productos",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "S/ ${String.format("%.2f", purchase.total)}",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                IconButton(onClick = { /* TODO */ }) {
-                    Icon(
-                        imageVector = Icons.Default.Visibility,
-                        contentDescription = "Ver detalles",
-                        tint = PrimaryGreen
-                    )
-                }
-            }
-        }
-        
-        if (purchase.status == PurchaseStatus.PENDING) {
-            Surface(
-                color = WarningColor.copy(alpha = 0.1f),
-                shape = MaterialTheme.shapes.small
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = WarningColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "Pendiente de pago",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = WarningColor
-                        )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                suppliers.forEachIndexed { index, s ->
+                                    DropdownMenuItem(
+                                        text = { Text("${s.nombre}  —  ${s.ruc}") },
+                                        onClick = {
+                                            selectedSupplierIdx = index
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
-                    Text(
-                        text = "Vence: ${purchase.dueDate}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = WarningColor
-                    )
+                }
+
+                // ---------- Agregar productos ----------
+                AppCard(Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Agregar Productos", style = MaterialTheme.typography.titleMedium)
+
+                        OutlinedTextField(
+                            value = nameOrCode,
+                            onValueChange = { nameOrCode = it },
+                            label = { Text("Nombre o Código") },
+                            leadingIcon = { Icon(Icons.Default.Inventory2, null) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = qtyTxt,
+                                onValueChange = { qtyTxt = it },
+                                label = { Text("Cantidad") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                            OutlinedTextField(
+                                value = costTxt,
+                                onValueChange = { costTxt = it },
+                                label = { Text("Costo (S/)") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                val q = qtyTxt.toIntOrNull() ?: 0
+                                val c = costTxt.replace(',', '.').toDoubleOrNull() ?: -1.0
+                                if (nameOrCode.isBlank()) {
+                                    scope.launch { snackbar.showSnackbar("Ingresa el nombre o código") }
+                                    return@Button
+                                }
+                                if (q <= 0) {
+                                    scope.launch { snackbar.showSnackbar("Cantidad inválida") }
+                                    return@Button
+                                }
+                                if (c < 0.0) {
+                                    scope.launch { snackbar.showSnackbar("Costo inválido") }
+                                    return@Button
+                                }
+                                vm.addDraftLine(nameOrCode, q, c)
+                                nameOrCode = ""
+                                qtyTxt = "1"
+                                costTxt = ""
+                            },
+                            modifier = Modifier
+                                .height(50.dp)
+                                .fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Agregar", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+
+                // ---------- Productos añadidos ----------
+                AppCard(Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Productos en la Compra", style = MaterialTheme.typography.titleMedium)
+
+                        if (cart.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp),
+                                contentAlignment = Alignment.Center
+                            ) { Text("El carrito está vacío", color = SecondaryText) }
+                        } else {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 220.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                cart.forEach { line ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                text = line.nameOrCode,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                            Text(
+                                                text = "${line.qty} × S/ ${fmt(line.cost)} = S/ ${fmt(line.qty * line.cost)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = SecondaryText
+                                            )
+                                        }
+                                        IconButton(onClick = { vm.removeDraftLine(line.nameOrCode, line.cost) }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Quitar",
+                                                tint = ErrorColor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+
+
+                // ---------- Resumen y acciones ----------
+                AppCard(Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SummaryRow("Productos", cart.size.toString())
+                            SummaryRow("Unidades", cart.sumOf { it.qty }.toString())
+                            Divider()
+                            SummaryRow("Total", "S/ ${fmt(total)}", MaterialTheme.typography.titleMedium)
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { vm.clearDraftCart() },
+                                modifier = Modifier.weight(1f),
+                                enabled = cart.isNotEmpty()
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Cancelar")
+                            }
+
+                            Button(
+                                onClick = {
+                                    val supplier = selectedSupplier
+                                    if (supplier == null) {
+                                        scope.launch { snackbar.showSnackbar("Selecciona un proveedor") }
+                                        return@Button
+                                    }
+                                    if (cart.isEmpty()) {
+                                        scope.launch { snackbar.showSnackbar("Agrega al menos un producto") }
+                                        return@Button
+                                    }
+                                    vm.finalizeDraftPurchase(supplier.id)
+                                    scope.launch { snackbar.showSnackbar("Compra registrada") }
+                                    navController.popBackStack()
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = cart.isNotEmpty()
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Registrar compra")
+                            }
+                        }
+                    }
                 }
             }
+
+            SnackbarHost(
+                hostState = snackbar,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(12.dp)
+            )
         }
-        
-        if (purchase != mockPurchases.last()) {
-            Divider()
-        }
+    }
+
+    // ---- Diálogo: gestionar proveedores ----
+    if (showSupplierManager) {
+        SupplierManagerDialog(
+            onDismiss = { showSupplierManager = false },
+            sVm = sVm
+        )
     }
 }
 
-// uses shared mockPurchases from data.MockData
+@Composable
+private fun SummaryRow(
+    label: String,
+    value: String,
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyMedium
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = style)
+        Text(value, style = style)
+    }
+}
+
+@Composable
+private fun SupplierManagerDialog(
+    onDismiss: () -> Unit,
+    sVm: SupplierViewModel
+) {
+    var ruc by remember { mutableStateOf("") }
+    var nombre by remember { mutableStateOf("") }
+    var telefono by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Gestionar Proveedor") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(value = ruc, onValueChange = { ruc = it }, label = { Text("RUC") })
+                OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") })
+                OutlinedTextField(value = telefono, onValueChange = { telefono = it }, label = { Text("Teléfono") })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                sVm.addSupplier(ruc, nombre, telefono.ifBlank { null })
+                onDismiss()
+            }) { Text("Guardar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        }
+    )
+}
+
+
+private fun fmt(n: Double) = String.format("%.2f", n)
+

@@ -1,23 +1,17 @@
 package com.trabajo.minitienda.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import com.trabajo.minitienda.viewmodel.ProductViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,7 +47,8 @@ fun DashboardScreen(
             ActividadSemanalChart(salesViewModel = salesViewModel)
             val products = productViewModel.products.collectAsState().value
             val lowStockItems = products
-                .filter { it.stock < 10 } // productos con menos de 10 unidades
+                .filter { it.stock < 10 }
+                .sortedBy { it.stock }
                 .map { it.name to it.stock }
 
             if (lowStockItems.isNotEmpty()) {
@@ -63,6 +58,7 @@ fun DashboardScreen(
                 )
             }
 
+            // --- ACCESOS RÁPIDOS ---
             DashboardQuickActionsGrid(
                 onClick = { route -> navController.navigate(route) }
             )
@@ -70,105 +66,206 @@ fun DashboardScreen(
     }
 }
 
-/* ------------------------- MÉTRICAS ------------------------- */
+/* =========================================================
+ *                    MÉTRICAS (nuevo)
+ * ========================================================= */
 
 @Composable
-private fun DashboardStatsGrid(productViewModel: ProductViewModel) {
-    val products = productViewModel.products.collectAsState()
-    val stats = listOf(
-        DashboardStat("Ventas del Día", "S/ 6,350", "+12% desde ayer", Icons.Default.AttachMoney),
-        DashboardStat("Productos Vendidos", "47", "En 23 transacciones", Icons.Default.ShoppingCart),
-        DashboardStat("Total Productos", products.value.size.toString(), "En inventario", Icons.Default.Inventory),
-        DashboardStat("Ganancia Neta", "S/ 4,230", "Hoy", Icons.Default.TrendingUp)
+private fun DashboardMetricsSection(
+    productViewModel: ProductViewModel,
+    dashboardViewModel: DashboardViewModel
+) {
+    val products by productViewModel.products.collectAsState(initial = emptyList())
+    val todaySales by dashboardViewModel.todaySalesCount.collectAsState(initial = 0)
+    val todayUnits by dashboardViewModel.todayUnitsSold.collectAsState(initial = 0)
+    val lastSale by dashboardViewModel.lastSaleBrief.collectAsState(initial = null)
+
+    val metrics = listOf(
+        MetricCard(
+            badge = "Hoy",
+            title = "Ventas",
+            value = todaySales.toString(),
+            helper = "Transacciones del día",
+            icon = Icons.Default.ShoppingCart
+        ),
+        MetricCard(
+            badge = "Hoy",
+            title = "Unidades vendidas",
+            value = todayUnits.toString(),
+            helper = "Sumatoria de ítems",
+            icon = Icons.Default.Inventory
+        ),
+        MetricCard(
+            badge = "Inventario",
+            title = "Total productos",
+            value = products.size.toString(),
+            helper = "Registrados en stock",
+            icon = Icons.Default.Inventory2
+        ),
+        MetricCard(
+            badge = "Última venta",
+            title = "Monto",
+            value = "S/ " + String.format("%.2f", lastSale?.total ?: 0.0),
+            helper = lastSale?.let { "ID #${it.id} • ${fechaString(it.fecha)}" } ?: "Sin ventas aún",
+            icon = Icons.Default.AttachMoney
+        )
     )
 
-    // Pintamos en filas de 2 tarjetas
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        stats.chunked(2).forEach { rowItems ->
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rowItems.forEach { s ->
-                    Box(Modifier.weight(1f)) { DashboardStatCard(s) }
-                }
-                // Si la fila tiene solo 1, rellenamos el espacio para que no se estire
-                if (rowItems.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
+
+        metrics.forEach { m -> MetricCardView(m) }
     }
 }
 
+private data class MetricCard(
+    val badge: String,
+    val title: String,
+    val value: String,
+    val helper: String,
+    val icon: ImageVector
+)
+
 @Composable
-private fun DashboardStatCard(stat: DashboardStat) {
-    AppCard(modifier = Modifier.fillMaxWidth()) {
+private fun MetricCardView(m: MetricCard) {
+    AppCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp) // menos espacio
         ) {
+            Text(
+                m.badge,
+                style = MaterialTheme.typography.labelSmall,
+                color = SecondaryText
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stat.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SecondaryText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Icon(
-                    imageVector = stat.icon,
-                    contentDescription = null,
-                    tint = PrimaryGreen,
-                    modifier = Modifier.size(20.dp)
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(m.title, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        m.helper,
+                        style = MaterialTheme.typography.labelSmall,  // antes labelMedium
+                        color = SecondaryText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Iconito más compacto
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(PrimaryGreen.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        m.icon,
+                        contentDescription = null,
+                        tint = PrimaryGreen,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
-            Text(text = stat.value, style = MaterialTheme.typography.headlineMedium)
-            Text(text = stat.helper, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+
+            // Valor más chico
+            Text(
+                m.value,
+                style = MaterialTheme.typography.titleLarge
+            )
         }
     }
 }
 
-/* ---------------------- ALERTA BAJO STOCK ---------------------- */
+private fun fechaString(millis: Long): String {
+    if (millis == 0L) return "-"
+    val df = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    return df.format(Date(millis))
+}
+
+/* =========================================================
+ *                BAJO STOCK (compacto y responsivo)
+ * ========================================================= */
 
 @Composable
 private fun DashboardLowStockBanner(
     lowStockItems: List<Pair<String, Int>>,
-    onSeeProducts: () -> Unit
+    onSeeProducts: () -> Unit,
+    maxItems: Int = 3
 ) {
-    AppCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Productos con Bajo Stock",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = WarningColor
-                )
-                TextButton(onClick = onSeeProducts) {
-                    Text("Ver productos")
+    val bg = WarningColor.copy(alpha = 0.06f)
+    val br = WarningColor.copy(alpha = 0.25f)
+
+    AppCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, br, RoundedCornerShape(16.dp))
+            .background(bg, RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+            // Cabecera nivelada y adaptable
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val isTiny = maxWidth < 340.dp
+                val buttonLabel = if (isTiny) "Ver" else "Ver todos"
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ErrorOutline,
+                            contentDescription = null,
+                            tint = WarningColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Productos con Bajo Stock",
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            softWrap = false
+                        )
+                    }
+                    TextButton(
+                        onClick = onSeeProducts,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        modifier = Modifier.heightIn(min = 32.dp)
+                    ) {
+                        Text(buttonLabel, style = MaterialTheme.typography.labelMedium, color = WarningColor)
+                    }
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                lowStockItems.forEach { (name, qty) ->
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                lowStockItems.take(maxItems).forEach { (name, qty) ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = name,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "$qty unidades",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = WarningColor
                         )
                     }
@@ -178,72 +275,138 @@ private fun DashboardLowStockBanner(
     }
 }
 
-/* ------------------------ ACCESOS RÁPIDOS ------------------------ */
+/* =========================================================
+ *              ACCESOS RÁPIDOS (compacto)
+ * ========================================================= */
 
 @Composable
 private fun DashboardQuickActionsGrid(onClick: (String) -> Unit) {
     val actions = listOf(
-        DashboardAction("Productos", "products", Icons.Default.Inventory),
-        DashboardAction("Ventas", "sales", Icons.Default.ShoppingCart),
-        DashboardAction("Compras", "purchases", Icons.Default.AddShoppingCart),
-        DashboardAction("Cierre", "cash_closure", Icons.Default.AccountBalance)
+        DashboardAction(
+            badge = "Gestionar",
+            title = "Productos",
+            subtitle = "Ir a productos",
+            route = "products",
+            icon = Icons.Default.Inventory
+        ),
+        DashboardAction(
+            badge = "Registrar",
+            title = "Ventas",
+            subtitle = "Ir a ventas",
+            route = "sales",
+            icon = Icons.Default.ShoppingCart
+        ),
+        DashboardAction(
+            badge = "Registrar",
+            title = "Compras",
+            subtitle = "Ir a compras",
+            route = "purchases",
+            icon = Icons.Default.TrendingUp
+        ),
+        DashboardAction(
+            badge = "Ver",
+            title = "Cierre de Caja",
+            subtitle = "Ir a cierre",
+            route = "cash_closure",
+            icon = Icons.Default.AttachMoney
+        )
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(text = "Acceso Rápido", style = MaterialTheme.typography.titleLarge)
 
-        // También en filas de 2
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            actions.chunked(2).forEach { rowItems ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    rowItems.forEach { a ->
-                        Box(Modifier.weight(1f)) {
+            actions.chunked(1).forEach { row ->       // ← una tarjeta por fila (como tu ejemplo)
+                Row(Modifier.fillMaxWidth()) {
+                    row.forEach { a ->
+                        Box(Modifier.fillMaxWidth()) {
                             DashboardActionCard(a) { onClick(a.route) }
                         }
                     }
-                    if (rowItems.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
     }
 }
 
+private data class DashboardAction(
+    val badge: String,
+    val title: String,
+    val subtitle: String,
+    val route: String,
+    val icon: ImageVector
+)
+
+
 @Composable
-private fun DashboardActionCard(action: DashboardAction, onClick: () -> Unit) {
+private fun DashboardActionCard(
+    action: DashboardAction,
+    onClick: () -> Unit
+) {
     AppCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp) // ↓ antes 14–16
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(PrimaryGreen.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(imageVector = action.icon, contentDescription = null, tint = PrimaryGreen)
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(action.title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = action.badge,
+                style = MaterialTheme.typography.labelSmall, // ↓
+                color = SecondaryText
+            )
+
+            Spacer(Modifier.height(4.dp)) // ↓
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
                     Text(
-                        "Ir a ${action.title.lowercase()}",
-                        style = MaterialTheme.typography.bodySmall,
+                        action.title,
+                        style = MaterialTheme.typography.titleSmall // ↓
+                    )
+                    Text(
+                        action.subtitle,
+                        style = MaterialTheme.typography.labelMedium, // ↓
                         color = SecondaryText
                     )
                 }
+
+                Box(
+                    modifier = Modifier
+                        .size(32.dp) // ↓ antes 40.dp
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(PrimaryGreen.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = action.icon,
+                        contentDescription = null,
+                        tint = PrimaryGreen,
+                        modifier = Modifier.size(18.dp) // ↓
+                    )
+                }
             }
-            Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = SecondaryText)
+
+            Spacer(Modifier.height(4.dp)) // ↓
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = null,
+                    tint = SecondaryText,
+                    modifier = Modifier.size(18.dp) // ↓
+                )
+            }
         }
     }
 }

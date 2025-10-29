@@ -71,7 +71,9 @@ fun ProductRegistrationScreen(
     var showCatManager by remember { mutableStateOf(false) }
     val categories by categoryViewModel.categories.collectAsState()
 
-    PageLayout(title = "Nuevo Producto", onMenuClick = { }) {
+    PageLayout(title = "Nuevo Producto",
+        onMenuClick = onMenuClick
+    ) {
         Box(Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier

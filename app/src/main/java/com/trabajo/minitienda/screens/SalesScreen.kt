@@ -67,7 +67,9 @@ fun SalesScreen(
         vm.events.collect { msg -> snackbar.showSnackbar(msg) }
     }
 
-    PageLayout(title = "Registrar Venta", onMenuClick = { }) {
+    PageLayout(title = "Registrar Venta",
+        onMenuClick = onMenuClick
+    ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val isWide = maxWidth >= 600.dp
 
