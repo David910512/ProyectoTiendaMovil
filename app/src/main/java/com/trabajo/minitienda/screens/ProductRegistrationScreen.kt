@@ -42,7 +42,7 @@ fun ProductRegistrationScreen(
     productViewModel: ProductViewModel,
     categoryViewModel: CategoryViewModel,
     product: Product? = null,
-    onMenuClick: () -> Unit 
+    onMenuClick: () -> Unit = {}
 ) {
     // ---- estado de formulario ----
     var nombre by remember { mutableStateOf(product?.name ?: "") }
@@ -71,7 +71,9 @@ fun ProductRegistrationScreen(
     var showCatManager by remember { mutableStateOf(false) }
     val categories by categoryViewModel.categories.collectAsState()
 
-    PageLayout(title = "Nuevo Producto", onMenuClick = { }) {
+    PageLayout(title = "Nuevo Producto",
+        onMenuClick = onMenuClick
+    ) {
         Box(Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier

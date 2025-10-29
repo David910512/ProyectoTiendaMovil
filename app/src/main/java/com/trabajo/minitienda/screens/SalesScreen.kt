@@ -36,8 +36,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 @Composable
 fun SalesScreen(
     navController: NavController,
-    vm: SalesViewModel
-    onMenuClick: () -> Unit
+    vm: SalesViewModel,
+    onMenuClick: () -> Unit = {}
 ) {
     val cart by vm.cart.collectAsState()
     val total by vm.total.collectAsState()
@@ -67,7 +67,9 @@ fun SalesScreen(
         vm.events.collect { msg -> snackbar.showSnackbar(msg) }
     }
 
-    PageLayout(title = "Registrar Venta", onMenuClick = { }) {
+    PageLayout(title = "Registrar Venta",
+        onMenuClick = onMenuClick
+    ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val isWide = maxWidth >= 600.dp
 
