@@ -45,4 +45,16 @@ interface ProductDao {
             updateByCode(p.name, p.price, p.stock, p.descripcion, p.code)
         }
     }
+
+    @Query("""
+    INSERT OR IGNORE INTO producto (code, name, price, stock, descripcion)
+    VALUES (:code, :name, :price, :stock, :desc)
+""")
+    suspend fun insertIgnoreMinimal(
+        code: String,
+        name: String,
+        price: Double,
+        stock: Int,
+        desc: String
+    )
 }

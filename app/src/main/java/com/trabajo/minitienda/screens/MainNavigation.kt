@@ -41,16 +41,26 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import androidx.room.Room
 import com.trabajo.minitienda.data.database.AppDatabase
+import com.trabajo.minitienda.data.database.AppDbProvider
 import com.trabajo.minitienda.repository.CategoryRepository
 import com.trabajo.minitienda.repository.ProductRepository
+import com.trabajo.minitienda.repository.PurchaseRepository
 import com.trabajo.minitienda.repository.SaleRepository
 import com.trabajo.minitienda.viewmodel.CategoryViewModel
 import com.trabajo.minitienda.viewmodel.CategoryViewModelFactory
+import com.trabajo.minitienda.viewmodel.DashboardViewModel
+import com.trabajo.minitienda.viewmodel.DashboardViewModelFactory
 import com.trabajo.minitienda.viewmodel.ProductViewModel
 import com.trabajo.minitienda.viewmodel.ProductViewModelFactory
+import com.trabajo.minitienda.viewmodel.PurchasesViewModel
+import com.trabajo.minitienda.viewmodel.PurchasesViewModelFactory
 import com.trabajo.minitienda.viewmodel.SalesViewModel
 import com.trabajo.minitienda.viewmodel.SalesViewModelFactory
+import com.trabajo.minitienda.viewmodel.SupplierViewModel
+import com.trabajo.minitienda.viewmodel.SupplierViewModelFactory
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+
 
 // Data class para los ítems del menú
 private data class DrawerItem(
@@ -91,6 +101,20 @@ fun MainNavigation() {
     val saleRepository = remember { SaleRepository(db, db.saleDao(), db.productDao()) }
     val salesFactory = remember { SalesViewModelFactory(saleRepository, db.productDao()) }
     val salesViewModel: SalesViewModel = viewModel(factory = salesFactory)
+
+
+    val dashboardFactory = remember { DashboardViewModelFactory(db.saleDao()) }
+    val dashboardViewModel: DashboardViewModel = viewModel(factory = dashboardFactory)
+
+
+    val purchaseRepo = remember { PurchaseRepository(db, db.purchaseDao(), db.productDao()) }
+    val purchasesFactory = remember { PurchasesViewModelFactory(purchaseRepo, db.productDao(), db.supplierDao()) }
+    val purchasesViewModel: PurchasesViewModel = viewModel(factory = purchasesFactory)
+
+
+    val supplierFactory = remember { SupplierViewModelFactory(db.supplierDao()) }
+    val supplierViewModel: SupplierViewModel = viewModel(factory = supplierFactory)
+
 
     // --- Configuración del Menú Lateral (Navigation Drawer) ---
 
@@ -146,15 +170,16 @@ fun MainNavigation() {
         // --- Aquí van todas tus pantallas ---
         // Fíjate cómo AHORA SÍ pasamos `onMenuClick = openDrawer` a todas
         NavHost(navController = navController, startDestination = "dashboard") {
-            
-            composable("dashboard") { 
-                DashboardScreen(navController, productViewModel, onMenuClick = openDrawer) 
+
+            composable("dashboard") {
+                DashboardScreen(navController, productViewModel, dashboardViewModel, onMenuClick = openDrawer)
             }
-            
-            composable("products") { 
-                ProductListScreen(navController, productViewModel, onMenuClick = openDrawer) 
+
+
+            composable("products") {
+                ProductListScreen(navController, productViewModel, onMenuClick = openDrawer)
             }
-            
+
             composable(
                 route = "product_registration/{productId}",
                 arguments = listOf(navArgument("productId") { type = NavType.StringType })
@@ -163,28 +188,34 @@ fun MainNavigation() {
                 val products by productViewModel.products
                     .collectAsState(initial = emptyList())
                 val product = productId?.let { id -> products.find { it.id == id } }
-                
+
                 ProductRegistrationScreen(navController, productViewModel, categoryViewModel, product, onMenuClick = openDrawer)
             }
-            
+
             composable("product_registration") {
                 ProductRegistrationScreen(navController, productViewModel, categoryViewModel, onMenuClick = openDrawer)
             }
-            
-            composable("sales") { 
-                SalesScreen(navController, salesViewModel, onMenuClick = openDrawer) 
+
+            composable("sales") {
+                SalesScreen(navController, salesViewModel, onMenuClick = openDrawer)
             }
-            
-            composable("purchases") { 
-                PurchasesScreen(navController, onMenuClick = openDrawer) 
+
+            composable("purchases") {
+                PurchasesScreen(
+                    navController = navController,
+                    vm = purchasesViewModel,
+                    sVm = supplierViewModel,
+                    onMenuClick = openDrawer
+                )
             }
-            
-            composable("cash_closure") { 
+
+
+            composable("cash_closure") {
                 CashClosureScreen(navController, onMenuClick = openDrawer) // <--- Pantalla actualizada
             }
-            
-            composable("profile") { 
-                ProfileScreen(navController, onMenuClick = openDrawer) 
+
+            composable("profile") {
+                ProfileScreen(navController, onMenuClick = openDrawer)
             }
         }
     }
