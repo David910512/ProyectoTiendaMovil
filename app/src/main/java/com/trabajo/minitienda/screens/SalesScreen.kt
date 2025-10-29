@@ -36,7 +36,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 @Composable
 fun SalesScreen(
     navController: NavController,
-    vm: SalesViewModel
+    vm: SalesViewModel,
     onMenuClick: () -> Unit
 ) {
     val cart by vm.cart.collectAsState()

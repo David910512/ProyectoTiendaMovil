@@ -24,16 +24,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.trabajo.minitienda.ui.components.ActividadSemanalChart
 import com.trabajo.minitienda.ui.components.AppCard
 import com.trabajo.minitienda.ui.components.PageLayout
 import com.trabajo.minitienda.ui.theme.PrimaryGreen
 import com.trabajo.minitienda.ui.theme.SecondaryText
 import com.trabajo.minitienda.ui.theme.WarningColor
+import com.trabajo.minitienda.viewmodel.SalesViewModel
 
 @Composable
 fun DashboardScreen(
     navController: NavController,
     productViewModel: ProductViewModel,
+    salesViewModel: SalesViewModel,
     onMenuClick: () -> Unit 
 ) {
     PageLayout(
@@ -47,7 +50,7 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             DashboardStatsGrid(productViewModel)
-
+            ActividadSemanalChart(salesViewModel = salesViewModel)
             val products = productViewModel.products.collectAsState().value
             val lowStockItems = products
                 .filter { it.stock < 10 } // productos con menos de 10 unidades

@@ -74,6 +74,10 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
 
+    val vicoVersion = "1.14.0"
+    implementation("com.patrykandpatryk.vico:vico-core:$vicoVersion")
+    implementation("com.patrykandpatryk.vico:vico-compose-m3:$vicoVersion")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -3,11 +3,13 @@ package com.trabajo.minitienda.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trabajo.minitienda.data.dao.ProductDao
+import com.trabajo.minitienda.data.model.DailySaleSummary
 import com.trabajo.minitienda.repository.SaleRepository
 import com.trabajo.minitienda.repository.SaleRepository.CartItem
 import com.trabajo.minitienda.data.model.Product
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class SalesViewModel(
     private val repo: SaleRepository,
@@ -82,6 +84,33 @@ class SalesViewModel(
             _events.tryEmit("Venta realizada (#$id)")
         } catch (e: Exception) {
             _events.tryEmit(e.message ?: "Error al registrar la venta")
+        }
+    }
+    private val _weeklySales = MutableStateFlow<List<DailySaleSummary>>(emptyList())
+    val weeklySales: StateFlow<List<DailySaleSummary>> = _weeklySales.asStateFlow()
+
+    init {
+        loadWeeklySales()
+    }
+
+    private fun loadWeeklySales() {
+        val calendar = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -6)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val sevenDaysAgoTimestamp = calendar.timeInMillis
+
+        viewModelScope.launch {
+            repo.getWeeklySalesSummary(sevenDaysAgoTimestamp)
+                .catch { exception ->
+                    _weeklySales.value = emptyList()
+                }
+                .collect { salesData ->
+                    _weeklySales.value = salesData
+                }
         }
     }
 }
