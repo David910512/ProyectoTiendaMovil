@@ -37,6 +37,14 @@ interface SaleDao {
     """)
     fun todaySalesCount(): Flow<Int>
 
+    // Total de VENTAS (ingresos) de HOY
+    @Query("""
+        SELECT COALESCE(SUM(total), 0.0)
+        FROM venta
+        WHERE DATE(fecha / 1000, 'unixepoch', 'localtime') = DATE('now','localtime')
+    """)
+    fun todaySalesTotal(): kotlinx.coroutines.flow.Flow<Double>
+
     // Unidades vendidas HOY (zona local)
     @Query("""
         SELECT COALESCE(SUM(d.cantidad), 0)
