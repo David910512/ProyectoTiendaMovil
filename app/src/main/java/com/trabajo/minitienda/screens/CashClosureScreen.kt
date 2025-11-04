@@ -1,281 +1,261 @@
 package com.trabajo.minitienda.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.trabajo.minitienda.ui.components.AppCard
 import com.trabajo.minitienda.ui.components.PageLayout
-import com.trabajo.minitienda.ui.components.PrimaryButton
-import com.trabajo.minitienda.ui.theme.*
+import com.trabajo.minitienda.ui.theme.PrimaryGreen
+import com.trabajo.minitienda.ui.theme.SecondaryText
+import com.trabajo.minitienda.viewmodel.CashClosureViewModel
+import java.util.Locale
 
 @Composable
 fun CashClosureScreen(
     navController: NavController,
-    onMenuClick: () -> Unit // <--- ¡AQUÍ ESTÁ EL CAMBIO!
+    vm: CashClosureViewModel,
+    onMenuClick: () -> Unit
 ) {
-    // Static example value (no editable logic)
-    val efectivoContado = "S/ 1,850.00"
+    val salesTotal by vm.salesTotal.collectAsState()
+    val purchasesTotal by vm.purchasesTotal.collectAsState()
+    val netIncome by vm.netIncome.collectAsState()
+    val salesCount by vm.salesCount.collectAsState()
+    val avgTicket by vm.avgTicket.collectAsState()
 
-    PageLayout(
-        title = "Cierre de Caja",
-        onMenuClick = onMenuClick // <--- Ahora esto funciona
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Resumen del día (2/3)
-            Column(
-                modifier = Modifier.weight(2f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Estadísticas principales
-                StatsGrid()
-
-                // Transacciones del día
-                TransactionsCard()
-            }
-
-            // Panel de cierre (1/3)
-            ClosurePanel(
-                efectivoContado = efectivoContado,
-                onEfectivoContadoChange = { /* static: read-only */ },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-fun StatsGrid() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        StatCard(
-            title = "Ventas Totales",
-            value = "S/ 2,450.00",
-            icon = Icons.Default.ShoppingCart,
-            modifier = Modifier.weight(1f)
-        )
-        StatCard(
-            title = "Efectivo Esperado",
-            value = "S/ 1,850.00",
-            icon = Icons.Default.Payments,
-            modifier = Modifier.weight(1f)
-        )
-        StatCard(
-            title = "Tarjetas",
-            value = "S/ 600.00",
-            icon = Icons.Default.CreditCard,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-fun StatCard(
-    title: String,
-    value: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier
-) {
-    AppCard (modifier = modifier) {
+    PageLayout(title = "Cierre de Caja", onMenuClick = onMenuClick) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = PrimaryGreen,
-                modifier = Modifier.size(24.dp)
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = SecondaryText
-            )
-        }
-    }
-}
-
-@Composable
-private fun TransactionsCard() {
-    AppCard(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Transacciones del Día",
-                style = MaterialTheme.typography.titleMedium
+
+            // ====== Tarjetas principales (mismo estilo que tus Accesos Rápidos) ======
+            MetricCardRow(
+                badge = "Hoy",
+                title = "Total Ventas",
+                subtitle = "Ingresos del día",
+                value = money(salesTotal),
+                trailingIcon = Icons.Default.TrendingUp
             )
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            MetricCardRow(
+                badge = "Hoy",
+                title = "Total Compras",
+                subtitle = "Egresos del día",
+                value = money(purchasesTotal),
+                trailingIcon = Icons.Default.TrendingDown
+            )
+
+            MetricCardRow(
+                badge = "Hoy",
+                title = "Ganancia Neta",
+                subtitle = "${percent(netIncome, salesTotal)} margen",
+                value = money(netIncome),
+                trailingIcon = Icons.Default.AttachMoney
+            )
+
+            MetricCardRow(
+                badge = "Hoy",
+                title = "Transacciones",
+                subtitle = "Ventas realizadas",
+                value = salesCount.toString(),
+                trailingIcon = Icons.Default.ShoppingCart
+            )
+
+            // ====== Resumen Detallado ======
+            AppCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+                    Text("Resumen Detallado", style = MaterialTheme.typography.titleMedium)
+
+                    SummaryItem(
+                        title = "Total de Ingresos",
+                        hint = "Por ventas realizadas",
+                        value = money(salesTotal),
+                        positive = true
+                    )
+
+                    SummaryItem(
+                        title = "Total de Egresos",
+                        hint = "Por compras de inventario",
+                        value = money(purchasesTotal),
+                        positive = false
+                    )
+
+                    Divider()
+
+                    SummaryBig(
+                        title = "Ganancia Neta del Día",
+                        hint = "Ingresos - Egresos",
+                        value = money(netIncome)
+                    )
+
+                    SummarySmall("Ticket Promedio", money(avgTicket))
+                    SummarySmall("Margen de Ganancia", percent(netIncome, salesTotal))
+                }
+            }
+
+            // ====== Acciones ======
+            AppCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+                    Button(
+                        onClick = { vm.generateReport { } },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp))
+                        Text("Generar Reporte")
+                    }
+
+                    OutlinedButton(
+                        onClick = { vm.resetDay { } },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp))
+                        Text("Reiniciar Día")
+                    }
+
+                    WarningNote()
+                }
+            }
+        }
+    }
+}
+
+/* ======= UI helpers, mismo patrón visual que tus tarjetas ======= */
+
+@Composable
+private fun MetricCardRow(
+    badge: String,
+    title: String,
+    subtitle: String,
+    value: String,
+    trailingIcon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    AppCard(Modifier.fillMaxWidth().clickable { }) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Text(badge, style = MaterialTheme.typography.labelSmall, color = SecondaryText)
+            Spacer(Modifier.height(4.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                TransactionRow(
-                    title = "Ventas en Efectivo",
-                    transactions = 45,
-                    amount = 1850.00
-                )
-                TransactionRow(
-                    title = "Ventas con Tarjeta",
-                    transactions = 15,
-                    amount = 600.00
-                )
-                TransactionRow(
-                    title = "Devoluciones",
-                    transactions = 2,
-                    amount = -150.00,
-                    textColor = ErrorColor
-                )
-
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                TransactionRow(
-                    title = "Total del Día",
-                    transactions = 62,
-                    amount = 2300.00,
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.titleSmall)
+                    Text(subtitle, style = MaterialTheme.typography.labelMedium, color = SecondaryText,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Box(
+                    modifier = Modifier.size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(PrimaryGreen.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(trailingIcon, null, tint = PrimaryGreen)
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(value, style = MaterialTheme.typography.titleLarge)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Icon(Icons.Default.ArrowForward, null, tint = SecondaryText, modifier = Modifier.size(18.dp))
             }
         }
     }
 }
 
 @Composable
-private fun TransactionRow(
-    title: String,
-    transactions: Int,
-    amount: Double,
-    textColor: Color = Color.Unspecified,
-    style: TextStyle = MaterialTheme.typography.bodyMedium
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(
-                text = title,
-                style = style,
-                color = textColor
-            )
-            if (style != MaterialTheme.typography.titleMedium) {
-                Text(
-                    text = "$transactions transacciones",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
-                )
+private fun SummaryItem(title: String, hint: String, value: String, positive: Boolean) {
+    AppCard(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (positive) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                        null, tint = if (positive) PrimaryGreen else MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(title, style = MaterialTheme.typography.titleSmall)
+                }
+                Text(hint, style = MaterialTheme.typography.labelSmall, color = SecondaryText)
             }
+            Text(value, style = MaterialTheme.typography.titleMedium)
         }
+    }
+}
+
+@Composable
+private fun SummaryBig(title: String, hint: String, value: String) {
+    AppCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(hint, style = MaterialTheme.typography.labelSmall, color = SecondaryText)
+            Spacer(Modifier.height(6.dp))
+            Text(value, style = MaterialTheme.typography.titleLarge)
+        }
+    }
+}
+
+@Composable
+private fun SummarySmall(title: String, value: String) {
+    AppCard(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(value, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+
+@Composable
+private fun WarningNote() {
+    Surface(
+        color = MaterialTheme.colorScheme.error.copy(alpha = 0.06f),
+        shape = RoundedCornerShape(12.dp)
+    ) {
         Text(
-            text = "S/ ${String.format("%.2f", amount)}",
-            style = style,
-            color = textColor
+            "Importante: Antes de reiniciar el día, asegúrate de generar el reporte. " +
+                    "Esta acción podría eliminar o archivar registros del día según tu implementación.",
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodySmall
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ClosurePanel(
-    efectivoContado: String,
-    onEfectivoContadoChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    AppCard(modifier = modifier) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Cierre de Caja",
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Efectivo Contado",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    TextField(
-                        value = efectivoContado,
-                        onValueChange = {},
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("S/ 0.00") },
-                        singleLine = true,
-                        readOnly = true,
-                    )
-                }
-
-                Surface(
-                    color = WarningColor.copy(alpha = 0.1f),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Diferencia",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = WarningColor
-                            )
-                            Text(
-                                text = "S/ -50.00",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = WarningColor
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = WarningColor
-                        )
-                    }
-                }
-            }
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                PrimaryButton(
-                    text = "Realizar Cierre",
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedButton(
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Cancelar")
-                }
-            }
-        }
-    }
-}
+private fun money(n: Double) = "S/ " + String.format(Locale.getDefault(), "%.2f", n)
+private fun percent(net: Double, sales: Double): String =
+    if (sales <= 0.0) "0.0% margen"
+    else String.format(Locale.getDefault(),"%.1f%% margen", (net / sales) * 100.0)

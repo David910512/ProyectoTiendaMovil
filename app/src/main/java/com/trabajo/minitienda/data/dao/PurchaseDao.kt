@@ -16,4 +16,20 @@ interface PurchaseDao {
     @Transaction
     @Query("SELECT * FROM compra ORDER BY fecha DESC")
     fun observePurchases(): Flow<List<PurchaseWithDetails>>
+
+    // Total de egresos (compras) de HOY
+    @Query("""
+        SELECT COALESCE(SUM(total), 0.0)
+        FROM compra
+        WHERE DATE(fecha / 1000, 'unixepoch', 'localtime') = DATE('now','localtime')
+    """)
+    fun todayPurchasesTotal(): Flow<Double>
+
+    // (Opcional) número de compras de HOY
+    @Query("""
+        SELECT COUNT(*)
+        FROM compra
+        WHERE DATE(fecha / 1000, 'unixepoch', 'localtime') = DATE('now','localtime')
+    """)
+    fun todayPurchasesCount(): Flow<Int>
 }
