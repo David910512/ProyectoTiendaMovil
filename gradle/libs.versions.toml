@@ -19,6 +19,8 @@ material3 = "1.4.0"
 navigationComposeVersion = "2.9.5"
 foundation = "1.9.4"
 vicoVersion = "1.14.0"
+protoliteWellKnownTypes = "18.0.1"
+uiText = "1.9.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,6 +50,8 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 vico-compose-m3 = { module = "com.patrykandpatryk.vico:vico-compose-m3", version.ref = "vicoVersion" }
 vico-core = { module = "com.patrykandpatryk.vico:vico-core", version.ref = "vicoVersion" }
+protolite-well-known-types = { group = "com.google.firebase", name = "protolite-well-known-types", version.ref = "protoliteWellKnownTypes" }
+androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
