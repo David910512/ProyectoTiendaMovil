@@ -18,24 +18,30 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.trabajo.minitienda.data.model.SaleBrief
 import com.trabajo.minitienda.ui.components.ActividadSemanalChart
 import com.trabajo.minitienda.ui.components.AppCard
 import com.trabajo.minitienda.ui.components.PageLayout
 import com.trabajo.minitienda.ui.theme.PrimaryGreen
 import com.trabajo.minitienda.ui.theme.SecondaryText
 import com.trabajo.minitienda.ui.theme.WarningColor
+import com.trabajo.minitienda.viewmodel.DashboardViewModel
+import com.trabajo.minitienda.viewmodel.ProductViewModel
 import com.trabajo.minitienda.viewmodel.SalesViewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun DashboardScreen(
     navController: NavController,
     productViewModel: ProductViewModel,
     salesViewModel: SalesViewModel,
-    onMenuClick: () -> Unit 
+    dashboardViewModel: DashboardViewModel,
+    onMenuClick: () -> Unit
 ) {
     PageLayout(
         title = "Panel de Control",
-        onMenuClick = onMenuClick 
+        onMenuClick = onMenuClick
     ) {
         Column(
             modifier = Modifier
@@ -43,9 +49,24 @@ fun DashboardScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DashboardStatsGrid(productViewModel)
+            // --- Métricas del encabezado ---
+            val todaySales = dashboardViewModel.todaySalesCount.collectAsState(initial = 0).value
+            val todayUnits = dashboardViewModel.todayUnitsSold.collectAsState(initial = 0).value
+            val lastSale  = dashboardViewModel.lastSaleBrief.collectAsState(initial = null).value
+
+            // Si quieres que "Total productos" sea real, toma el size desde aquí:
+            val products = productViewModel.products.collectAsState(initial = emptyList()).value
+            DashboardStatsGrid(
+                todaySales = todaySales,
+                todayUnits = todayUnits,
+                lastSale   = lastSale,
+                totalProducts = products.size
+            )
+
+            // --- Gráfico semanal ---
             ActividadSemanalChart(salesViewModel = salesViewModel)
-            val products = productViewModel.products.collectAsState().value
+
+            // --- Banner de bajo stock ---
             val lowStockItems = products
                 .filter { it.stock < 10 }
                 .sortedBy { it.stock }
@@ -58,89 +79,42 @@ fun DashboardScreen(
                 )
             }
 
-            // --- ACCESOS RÁPIDOS ---
-            DashboardQuickActionsGrid(
-                onClick = { route -> navController.navigate(route) }
-            )
+            // --- Accesos rápidos ---
+            DashboardQuickActionsGrid { route -> navController.navigate(route) }
         }
     }
 }
 
 /* =========================================================
- *                    MÉTRICAS (nuevo)
+ *                        MÉTRICAS
  * ========================================================= */
 
-@Composable
-private fun DashboardMetricsSection(
-    productViewModel: ProductViewModel,
-    dashboardViewModel: DashboardViewModel
-) {
-    val products by productViewModel.products.collectAsState(initial = emptyList())
-    val todaySales by dashboardViewModel.todaySalesCount.collectAsState(initial = 0)
-    val todayUnits by dashboardViewModel.todayUnitsSold.collectAsState(initial = 0)
-    val lastSale by dashboardViewModel.lastSaleBrief.collectAsState(initial = null)
-
-    val metrics = listOf(
-        MetricCard(
-            badge = "Hoy",
-            title = "Ventas",
-            value = todaySales.toString(),
-            helper = "Transacciones del día",
-            icon = Icons.Default.ShoppingCart
-        ),
-        MetricCard(
-            badge = "Hoy",
-            title = "Unidades vendidas",
-            value = todayUnits.toString(),
-            helper = "Sumatoria de ítems",
-            icon = Icons.Default.Inventory
-        ),
-        MetricCard(
-            badge = "Inventario",
-            title = "Total productos",
-            value = products.size.toString(),
-            helper = "Registrados en stock",
-            icon = Icons.Default.Inventory2
-        ),
-        MetricCard(
-            badge = "Última venta",
-            title = "Monto",
-            value = "S/ " + String.format("%.2f", lastSale?.total ?: 0.0),
-            helper = lastSale?.let { "ID #${it.id} • ${fechaString(it.fecha)}" } ?: "Sin ventas aún",
-            icon = Icons.Default.AttachMoney
-        )
-    )
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
-        metrics.forEach { m -> MetricCardView(m) }
-    }
-}
-
-private data class MetricCard(
-    val badge: String,
+private data class DashboardMetric(
+    val badge: String?,
     val title: String,
+    val helper: String?,
     val value: String,
-    val helper: String,
     val icon: ImageVector
 )
 
 @Composable
-private fun MetricCardView(m: MetricCard) {
+private fun DashboardMetricCard(m: DashboardMetric) {
     AppCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp) // menos espacio
+                .padding(12.dp)
         ) {
-            Text(
-                m.badge,
-                style = MaterialTheme.typography.labelSmall,
-                color = SecondaryText
-            )
+            m.badge?.let { badge ->
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SecondaryText
+                )
+                Spacer(Modifier.height(4.dp))
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -148,50 +122,99 @@ private fun MetricCardView(m: MetricCard) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(m.title, style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        m.helper,
-                        style = MaterialTheme.typography.labelSmall,  // antes labelMedium
-                        color = SecondaryText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text(text = m.title, style = MaterialTheme.typography.titleSmall)
+                    m.helper?.let { helper ->
+                        Text(
+                            text = helper,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = SecondaryText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-
-                // Iconito más compacto
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(32.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(PrimaryGreen.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        m.icon,
+                        imageVector = m.icon,
                         contentDescription = null,
                         tint = PrimaryGreen,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            // Valor más chico
+            Spacer(Modifier.height(4.dp))
+
             Text(
-                m.value,
+                text = m.value,
                 style = MaterialTheme.typography.titleLarge
             )
         }
     }
 }
 
+@Composable
+fun DashboardStatsGrid(
+    todaySales: Int,
+    todayUnits: Int,
+    lastSale: SaleBrief?,
+    totalProducts: Int
+) {
+    val metrics = listOf(
+        DashboardMetric(
+            badge = "Hoy",
+            title = "Ventas",
+            helper = "Transacciones del día",
+            value = todaySales.toString(),
+            icon = Icons.Default.ShoppingCart
+        ),
+        DashboardMetric(
+            badge = "Hoy",
+            title = "Unidades vendidas",
+            helper = "Sumatoria de ítems",
+            value = todayUnits.toString(),
+            icon = Icons.Default.Inventory
+        ),
+        DashboardMetric(
+            badge = "Inventario",
+            title = "Total productos",
+            helper = "Registrados en stock",
+            value = totalProducts.toString(),
+            icon = Icons.Default.Inventory2
+        ),
+        DashboardMetric(
+            badge = "Última venta",
+            title = "Monto",
+            helper = lastSale?.let { "ID #${it.id} • ${fechaString(it.fecha)}" } ?: "Sin ventas aún",
+            value = "S/ " + String.format("%.2f", lastSale?.total ?: 0.0),
+            icon = Icons.Default.AttachMoney
+        )
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        metrics.forEach { DashboardMetricCard(it) }
+    }
+}
+
 private fun fechaString(millis: Long): String {
-    if (millis == 0L) return "-"
+    if (millis == 0L) return "—"
     val df = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-    return df.format(Date(millis))
+    return df.format(java.util.Date(millis))
 }
 
 /* =========================================================
- *                BAJO STOCK (compacto y responsivo)
+ *                 BAJO STOCK (compacto)
  * ========================================================= */
 
 @Composable
@@ -212,7 +235,6 @@ private fun DashboardLowStockBanner(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-            // Cabecera nivelada y adaptable
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val isTiny = maxWidth < 340.dp
                 val buttonLabel = if (isTiny) "Ver" else "Ver todos"
@@ -276,7 +298,7 @@ private fun DashboardLowStockBanner(
 }
 
 /* =========================================================
- *              ACCESOS RÁPIDOS (compacto)
+ *               ACCESOS RÁPIDOS (igual que antes)
  * ========================================================= */
 
 @Composable
@@ -316,7 +338,7 @@ private fun DashboardQuickActionsGrid(onClick: (String) -> Unit) {
         Text(text = "Acceso Rápido", style = MaterialTheme.typography.titleLarge)
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            actions.chunked(1).forEach { row ->       // ← una tarjeta por fila (como tu ejemplo)
+            actions.chunked(1).forEach { row ->
                 Row(Modifier.fillMaxWidth()) {
                     row.forEach { a ->
                         Box(Modifier.fillMaxWidth()) {
@@ -328,15 +350,6 @@ private fun DashboardQuickActionsGrid(onClick: (String) -> Unit) {
         }
     }
 }
-
-private data class DashboardAction(
-    val badge: String,
-    val title: String,
-    val subtitle: String,
-    val route: String,
-    val icon: ImageVector
-)
-
 
 @Composable
 private fun DashboardActionCard(
@@ -351,15 +364,16 @@ private fun DashboardActionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp) // ↓ antes 14–16
+                .padding(12.dp)
         ) {
-            Text(
-                text = action.badge,
-                style = MaterialTheme.typography.labelSmall, // ↓
-                color = SecondaryText
-            )
-
-            Spacer(Modifier.height(4.dp)) // ↓
+            action.badge?.let { badge ->
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SecondaryText
+                )
+                Spacer(Modifier.height(4.dp))
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -367,20 +381,19 @@ private fun DashboardActionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        action.title,
-                        style = MaterialTheme.typography.titleSmall // ↓
-                    )
-                    Text(
-                        action.subtitle,
-                        style = MaterialTheme.typography.labelMedium, // ↓
-                        color = SecondaryText
-                    )
+                    Text(text = action.title, style = MaterialTheme.typography.titleSmall)
+                    action.subtitle?.let { subtitle ->
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = SecondaryText
+                        )
+                    }
                 }
 
                 Box(
                     modifier = Modifier
-                        .size(32.dp) // ↓ antes 40.dp
+                        .size(32.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(PrimaryGreen.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
@@ -389,12 +402,12 @@ private fun DashboardActionCard(
                         imageVector = action.icon,
                         contentDescription = null,
                         tint = PrimaryGreen,
-                        modifier = Modifier.size(18.dp) // ↓
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            Spacer(Modifier.height(4.dp)) // ↓
+            Spacer(Modifier.height(4.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -404,7 +417,7 @@ private fun DashboardActionCard(
                     imageVector = Icons.Default.ArrowForward,
                     contentDescription = null,
                     tint = SecondaryText,
-                    modifier = Modifier.size(18.dp) // ↓
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -413,15 +426,17 @@ private fun DashboardActionCard(
 
 /* ------------------------- MODELOS LOCALES ------------------------- */
 
-private data class DashboardStat(
+private data class DashboardStat( // (si ya no lo usas, puedes borrarlo)
     val title: String,
     val value: String,
     val helper: String,
     val icon: ImageVector
 )
 
-private data class DashboardAction(
+data class DashboardAction(
     val title: String,
     val route: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val badge: String? = null,
+    val subtitle: String? = null
 )

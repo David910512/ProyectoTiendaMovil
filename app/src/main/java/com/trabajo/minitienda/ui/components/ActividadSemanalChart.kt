@@ -15,10 +15,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+
+import com.patrykandpatryk.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatryk.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatryk.vico.compose.chart.Chart
+import com.patrykandpatryk.vico.compose.chart.column.columnChart
+
+import com.patrykandpatryk.vico.compose.component.shapeComponent
+import com.patrykandpatryk.vico.compose.style.ProvideChartStyle
+
+import com.patrykandpatryk.vico.core.axis.AxisPosition
+import com.patrykandpatryk.vico.core.axis.formatter.AxisValueFormatter
+import com.patrykandpatryk.vico.core.component.shape.Shapes
+import com.patrykandpatryk.vico.core.entry.ChartEntry
+import com.patrykandpatryk.vico.core.entry.ChartEntryModelProducer
+import com.patrykandpatryk.vico.core.entry.entryOf
+import androidx.compose.foundation.layout.Column
+
+
 import com.trabajo.minitienda.viewmodel.SalesViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+
+
+
 
 @Composable
 fun ActividadSemanalChart(salesViewModel: SalesViewModel) {
@@ -87,29 +108,22 @@ fun ActividadSemanalChart(salesViewModel: SalesViewModel) {
 
             ProvideChartStyle {
                 Chart(
-                    chart = columnChart(
-                        columns = listOf(
-                            ColumnChart.Column(
-                                component = shapeComponent(
-                                    shape = Shapes.roundedCornerShape(all = 4.dp),
-                                    color = Color.Black // Color de tu imagen de ejemplo
-                                )
-                            )
-                        )
-                    ),
+                    chart = columnChart(),              // ← sin columns
                     chartModelProducer = chartEntryModelProducer,
                     startAxis = rememberStartAxis(
                         title = null,
-                        labelCount = 5,
-                        valueFormatter = { value, _ -> "S/ ${value.toInt()}" } // Eje Y
+                        valueFormatter = { value, _ -> "S/ ${value.toInt()}" }
                     ),
                     bottomAxis = rememberBottomAxis(
                         title = null,
-                        valueFormatter = bottomAxisValueFormatter // Eje X (Lun, Mar...)
+                        valueFormatter = bottomAxisValueFormatter
                     ),
                     modifier = Modifier.height(200.dp)
                 )
             }
+
+
+
         }
     }
 }
