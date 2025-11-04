@@ -24,24 +24,31 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
-    PageLayout(
-        title = "Compras",
-        onMenuClick = OnMenuClick
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            StatsRow()
-            PurchaseFilters()
-            PurchaseList()
-        }
-    }
+fun PurchasesScreen(
+    navController: NavController,
+    purchasesVM: PurchasesViewModel,
+    onMenuClick: () -> Unit
+) {
+    // ---- estados / flows desde PurchasesViewModel ----
+    val suppliers by purchasesVM.suppliers.collectAsState(initial = emptyList())
+
+    var showSupplierManager by remember { mutableStateOf(false) }
+    var selectedSupplierIdx by remember { mutableStateOf(-1) }
+    val selectedSupplier = suppliers.getOrNull(selectedSupplierIdx)
+
+    var nameOrCode by remember { mutableStateOf("") }
+    var qtyTxt by remember { mutableStateOf("1") }
+    var costTxt by remember { mutableStateOf("") }
+
+    val cart by purchasesVM.draftCart.collectAsState(initial = emptyList())
+    val total by purchasesVM.draftTotal.collectAsState(initial = 0.0)
+
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     PageLayout(title = "Registrar Compra", onMenuClick = onMenuClick) {
         Box(Modifier.fillMaxSize()) {
-            // --- Scroll general ---
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -49,7 +56,7 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                     .padding(bottom = 70.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // ---------- Proveedor ----------
+                /* ---------- Proveedor ---------- */
                 AppCard(Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(
@@ -58,7 +65,9 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("Proveedor", style = MaterialTheme.typography.titleMedium)
-                            TextButton(onClick = { showSupplierManager = true }) { Text("Gestionar") }
+                            TextButton(onClick = { showSupplierManager = true }) {
+                                Text("Gestionar")
+                            }
                         }
 
                         var expanded by remember { mutableStateOf(false) }
@@ -75,7 +84,9 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("Selecciona un proveedor") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                },
                                 singleLine = true
                             )
 
@@ -97,7 +108,7 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                     }
                 }
 
-                // ---------- Agregar productos ----------
+                /* ---------- Agregar productos ---------- */
                 AppCard(Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Agregar Productos", style = MaterialTheme.typography.titleMedium)
@@ -138,22 +149,20 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                             onClick = {
                                 val q = qtyTxt.toIntOrNull() ?: 0
                                 val c = costTxt.replace(',', '.').toDoubleOrNull() ?: -1.0
-                                if (nameOrCode.isBlank()) {
-                                    scope.launch { snackbar.showSnackbar("Ingresa el nombre o código") }
-                                    return@Button
+                                when {
+                                    nameOrCode.isBlank() ->
+                                        scope.launch { snackbar.showSnackbar("Ingresa el nombre o código") }
+                                    q <= 0 ->
+                                        scope.launch { snackbar.showSnackbar("Cantidad inválida") }
+                                    c < 0.0 ->
+                                        scope.launch { snackbar.showSnackbar("Costo inválido") }
+                                    else -> {
+                                        purchasesVM.addDraftLine(nameOrCode, q, c)
+                                        nameOrCode = ""
+                                        qtyTxt = "1"
+                                        costTxt = ""
+                                    }
                                 }
-                                if (q <= 0) {
-                                    scope.launch { snackbar.showSnackbar("Cantidad inválida") }
-                                    return@Button
-                                }
-                                if (c < 0.0) {
-                                    scope.launch { snackbar.showSnackbar("Costo inválido") }
-                                    return@Button
-                                }
-                                vm.addDraftLine(nameOrCode, q, c)
-                                nameOrCode = ""
-                                qtyTxt = "1"
-                                costTxt = ""
                             },
                             modifier = Modifier
                                 .height(50.dp)
@@ -167,7 +176,7 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                     }
                 }
 
-                // ---------- Productos añadidos ----------
+                /* ---------- Productos añadidos ---------- */
                 AppCard(Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Productos en la Compra", style = MaterialTheme.typography.titleMedium)
@@ -199,12 +208,19 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                                                 style = MaterialTheme.typography.bodyLarge
                                             )
                                             Text(
-                                                text = "${line.qty} × S/ ${fmt(line.cost)} = S/ ${fmt(line.qty * line.cost)}",
+                                                text = "${line.qty} × S/ ${fmt(line.cost)} = S/ ${
+                                                    fmt(line.qty * line.cost)
+                                                }",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = SecondaryText
                                             )
                                         }
-                                        IconButton(onClick = { vm.removeDraftLine(line.nameOrCode, line.cost) }) {
+                                        IconButton(
+                                            onClick = {
+                                                // En draft usamos (nameOrCode, cost) para identificar la línea
+                                                purchasesVM.removeDraftLine(line.nameOrCode, line.cost)
+                                            }
+                                        ) {
                                             Icon(
                                                 imageVector = Icons.Default.Delete,
                                                 contentDescription = "Quitar",
@@ -218,16 +234,18 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                     }
                 }
 
-
-
-                // ---------- Resumen y acciones ----------
+                /* ---------- Resumen y acciones ---------- */
                 AppCard(Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             SummaryRow("Productos", cart.size.toString())
                             SummaryRow("Unidades", cart.sumOf { it.qty }.toString())
                             Divider()
-                            SummaryRow("Total", "S/ ${fmt(total)}", MaterialTheme.typography.titleMedium)
+                            SummaryRow(
+                                "Total",
+                                "S/ ${fmt(total)}",
+                                MaterialTheme.typography.titleMedium
+                            )
                         }
 
                         Row(
@@ -237,7 +255,7 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             OutlinedButton(
-                                onClick = { vm.clearDraftCart() },
+                                onClick = { purchasesVM.clearDraftCart() },
                                 modifier = Modifier.weight(1f),
                                 enabled = cart.isNotEmpty()
                             ) {
@@ -249,17 +267,17 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
                             Button(
                                 onClick = {
                                     val supplier = selectedSupplier
-                                    if (supplier == null) {
-                                        scope.launch { snackbar.showSnackbar("Selecciona un proveedor") }
-                                        return@Button
+                                    when {
+                                        supplier == null ->
+                                            scope.launch { snackbar.showSnackbar("Selecciona un proveedor") }
+                                        cart.isEmpty() ->
+                                            scope.launch { snackbar.showSnackbar("Agrega al menos un producto") }
+                                        else -> {
+                                            purchasesVM.finalizeDraftPurchase(supplier.id)
+                                            scope.launch { snackbar.showSnackbar("Compra registrada") }
+                                            navController.popBackStack()
+                                        }
                                     }
-                                    if (cart.isEmpty()) {
-                                        scope.launch { snackbar.showSnackbar("Agrega al menos un producto") }
-                                        return@Button
-                                    }
-                                    vm.finalizeDraftPurchase(supplier.id)
-                                    scope.launch { snackbar.showSnackbar("Compra registrada") }
-                                    navController.popBackStack()
                                 },
                                 modifier = Modifier.weight(1f),
                                 enabled = cart.isNotEmpty()
@@ -286,10 +304,14 @@ fun PurchasesScreen(navController: NavController, onMenuClick: () -> Unit) {
     if (showSupplierManager) {
         SupplierManagerDialog(
             onDismiss = { showSupplierManager = false },
-            sVm = sVm
+            onSave = { ruc, nombre, telefono ->
+                purchasesVM.upsertSupplierByRuc(ruc, nombre, telefono)
+            }
         )
     }
 }
+
+/* Utilidades y diálogos */
 
 @Composable
 private fun SummaryRow(
@@ -306,7 +328,7 @@ private fun SummaryRow(
 @Composable
 private fun SupplierManagerDialog(
     onDismiss: () -> Unit,
-    sVm: SupplierViewModel
+    onSave: (ruc: String, nombre: String, telefono: String?) -> Unit
 ) {
     var ruc by remember { mutableStateOf("") }
     var nombre by remember { mutableStateOf("") }
@@ -324,7 +346,7 @@ private fun SupplierManagerDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                sVm.addSupplier(ruc, nombre, telefono.ifBlank { null })
+                onSave(ruc, nombre, telefono.ifBlank { null })
                 onDismiss()
             }) { Text("Guardar") }
         },
@@ -334,6 +356,4 @@ private fun SupplierManagerDialog(
     )
 }
 
-
 private fun fmt(n: Double) = String.format("%.2f", n)
-

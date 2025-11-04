@@ -69,6 +69,8 @@ private data class DrawerItem(
 fun MainNavigation() {
     val navController = rememberNavController()
     val context = LocalContext.current
+
+    // Cargar DB una sola vez
     val dbState by produceState<AppDatabase?>(initialValue = null, key1 = context) {
         value = Room.databaseBuilder(
             context,
@@ -79,28 +81,62 @@ fun MainNavigation() {
     val db = dbState
 
     if (db == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
 
-    // ViewModels
-    val repository = remember { ProductRepository(db.productDao()) }
-    val factory = remember { ProductViewModelFactory(repository) }
-    val productViewModel: ProductViewModel = viewModel(factory = factory)
+    // ViewModels (recuerda envolver en remember para evitar recreaciones)
+    val productViewModel: ProductViewModel = run {
+        val repository = remember { ProductRepository(db.productDao()) }
+        val factory = remember { ProductViewModelFactory(repository) }
+        viewModel(factory = factory)
+    }
 
-    val categoryRepository = remember { CategoryRepository(db.categoryDao()) }
-    val categoryFactory = remember { CategoryViewModelFactory(categoryRepository) }
-    val categoryViewModel: CategoryViewModel = viewModel(factory = categoryFactory)
+    val categoryViewModel: CategoryViewModel = run {
+        val repository = remember { CategoryRepository(db.categoryDao()) }
+        val factory = remember { CategoryViewModelFactory(repository) }
+        viewModel(factory = factory)
+    }
 
-    val saleRepository = remember { SaleRepository(db, db.saleDao(), db.productDao()) }
-    val salesFactory = remember { SalesViewModelFactory(saleRepository, db.productDao()) }
-    val salesViewModel: SalesViewModel = viewModel(factory = salesFactory)
+    val salesViewModel: SalesViewModel = run {
+        val repository = remember { SaleRepository(db, db.saleDao(), db.productDao()) }
+        val factory = remember { SalesViewModelFactory(repository, db.productDao()) }
+        viewModel(factory = factory)
+    }
 
-    // --- Configuración del Menú Lateral (Navigation Drawer) ---
+    // NUEVO: DashboardViewModel (para todaySalesCount, todayUnitsSold, lastSaleBrief)
+    val dashboardViewModel: DashboardViewModel = run {
+        val factory = remember { DashboardViewModelFactory(db.saleDao()) }
+        viewModel(factory = factory)
+    }
 
-    // 1. Lista de ítems para el menú
+    // --- PurchasesViewModel ---
+    val purchasesViewModel: PurchasesViewModel = run {
+        // El repo según tu constructor actual (db, purchaseDao, productDao)
+        val repo = remember {
+            PurchaseRepository(
+                db           = db,
+                purchaseDao  = db.purchaseDao(),
+                productDao   = db.productDao()
+            )
+        }
+
+        // La factory según tu firma (repo, productDao, supplierDao)
+        val factory = remember {
+            PurchasesViewModelFactory(
+                repo         = repo,
+                productDao   = db.productDao(),
+                supplierDao  = db.supplierDao()
+            )
+        }
+
+        viewModel(factory = factory)
+    }
+
+
+    // Drawer
     val drawerItems = listOf(
         DrawerItem("Panel", "dashboard", Icons.Default.Dashboard),
         DrawerItem("Productos", "products", Icons.Default.Inventory),
@@ -109,27 +145,15 @@ fun MainNavigation() {
         DrawerItem("Cierre", "cash_closure", Icons.Default.AccountBalance),
         DrawerItem("Perfil", "profile", Icons.Default.Person)
     )
-
-    // 2. Estado para saber si el drawer está abierto o cerrado
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    // 3. Scope para abrir/cerrar el drawer
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    // 4. Estado para saber qué ítem está seleccionado
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
 
-    // 5. Función para abrir el menú (la pasaremos a las pantallas)
-    val openDrawer: () -> Unit = {
-        scope.launch {
-            drawerState.open()
-        }
-    }
-
-    // --- Contenido Principal (Drawer + NavHost) ---
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            // El contenido del menú
             ModalDrawerSheet {
                 Spacer(Modifier.height(16.dp))
                 drawerItems.forEach { item ->
@@ -139,9 +163,7 @@ fun MainNavigation() {
                         selected = currentRoute == item.route,
                         onClick = {
                             scope.launch { drawerState.close() }
-                            navController.navigate(item.route) {
-                                launchSingleTop = true
-                            }
+                            navController.navigate(item.route) { launchSingleTop = true }
                         },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
@@ -149,48 +171,62 @@ fun MainNavigation() {
             }
         }
     ) {
-        // --- Aquí van todas tus pantallas ---
-        // Fíjate cómo AHORA SÍ pasamos `onMenuClick = openDrawer` a todas
         NavHost(navController = navController, startDestination = "dashboard") {
-            
-            composable("dashboard") { 
-                DashboardScreen(navController, productViewModel, onMenuClick = openDrawer) 
+
+            composable("dashboard") {
+                // OJO: aquí va la **instancia** salesViewModel, no la clase
+                DashboardScreen(
+                    navController = navController,
+                    productViewModel = productViewModel,
+                    salesViewModel = salesViewModel,
+                    dashboardViewModel = dashboardViewModel, // <-- nuevo
+                    onMenuClick = openDrawer
+                )
             }
-            
-            composable("products") { 
-                ProductListScreen(navController, productViewModel, onMenuClick = openDrawer) 
+
+            composable("products") {
+                ProductListScreen(navController, productViewModel, onMenuClick = openDrawer)
             }
-            
+
             composable(
                 route = "product_registration/{productId}",
                 arguments = listOf(navArgument("productId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val productId = backStackEntry.arguments?.getString("productId")?.toIntOrNull()
-                val products by productViewModel.products
-                    .collectAsState(initial = emptyList())
+                val products by productViewModel.products.collectAsState(initial = emptyList())
                 val product = productId?.let { id -> products.find { it.id == id } }
-                
-                ProductRegistrationScreen(navController, productViewModel, categoryViewModel, product, onMenuClick = openDrawer)
+
+                ProductRegistrationScreen(
+                    navController, productViewModel, categoryViewModel, product,
+                    onMenuClick = openDrawer
+                )
             }
-            
+
             composable("product_registration") {
-                ProductRegistrationScreen(navController, productViewModel, categoryViewModel, onMenuClick = openDrawer)
+                ProductRegistrationScreen(
+                    navController, productViewModel, categoryViewModel,
+                    onMenuClick = openDrawer
+                )
             }
-            
-            composable("sales") { 
-                SalesScreen(navController, salesViewModel, onMenuClick = openDrawer) 
+
+            composable("sales") {
+                SalesScreen(navController, salesViewModel, onMenuClick = openDrawer)
             }
-            
-            composable("purchases") { 
-                PurchasesScreen(navController, onMenuClick = openDrawer) 
+
+            composable("purchases") {
+                PurchasesScreen(
+                    navController = navController,
+                    purchasesVM = purchasesViewModel,  // ← instancia, no la clase
+                    onMenuClick = openDrawer
+                )
             }
-            
-            composable("cash_closure") { 
-                CashClosureScreen(navController, onMenuClick = openDrawer) // <--- Pantalla actualizada
+
+            composable("cash_closure") {
+                CashClosureScreen(navController, onMenuClick = openDrawer)
             }
-            
-            composable("profile") { 
-                ProfileScreen(navController, onMenuClick = openDrawer) 
+
+            composable("profile") {
+                ProfileScreen(navController, onMenuClick = openDrawer)
             }
         }
     }
