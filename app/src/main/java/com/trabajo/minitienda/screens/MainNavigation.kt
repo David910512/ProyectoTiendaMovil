@@ -46,6 +46,8 @@ import com.trabajo.minitienda.repository.CategoryRepository
 import com.trabajo.minitienda.repository.ProductRepository
 import com.trabajo.minitienda.repository.PurchaseRepository
 import com.trabajo.minitienda.repository.SaleRepository
+import com.trabajo.minitienda.viewmodel.CashClosureViewModel
+import com.trabajo.minitienda.viewmodel.CashClosureViewModelFactory
 import com.trabajo.minitienda.viewmodel.CategoryViewModel
 import com.trabajo.minitienda.viewmodel.CategoryViewModelFactory
 import com.trabajo.minitienda.viewmodel.DashboardViewModel
@@ -106,7 +108,7 @@ fun MainNavigation() {
         viewModel(factory = factory)
     }
 
-    // NUEVO: DashboardViewModel (para todaySalesCount, todayUnitsSold, lastSaleBrief)
+    // --- DashboardViewModel --
     val dashboardViewModel: DashboardViewModel = run {
         val factory = remember { DashboardViewModelFactory(db.saleDao()) }
         viewModel(factory = factory)
@@ -123,7 +125,6 @@ fun MainNavigation() {
             )
         }
 
-        // La factory según tu firma (repo, productDao, supplierDao)
         val factory = remember {
             PurchasesViewModelFactory(
                 repo         = repo,
@@ -132,6 +133,18 @@ fun MainNavigation() {
             )
         }
 
+        viewModel(factory = factory)
+    }
+
+    // --- Cash ---
+    val cashClosureVM: CashClosureViewModel = run {
+        val factory = remember {
+            CashClosureViewModelFactory(
+                saleDao = db.saleDao(),
+                purchaseDao = db.purchaseDao(),
+                movementDao = db.movementDao()
+            )
+        }
         viewModel(factory = factory)
     }
 
@@ -222,7 +235,7 @@ fun MainNavigation() {
             }
 
             composable("cash_closure") {
-                CashClosureScreen(navController, onMenuClick = openDrawer)
+                CashClosureScreen(navController, vm = cashClosureVM, onMenuClick = openDrawer)
             }
 
             composable("profile") {
