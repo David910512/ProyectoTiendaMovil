@@ -1,6 +1,7 @@
 package com.trabajo.minitienda.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,41 +17,53 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.trabajo.minitienda.ui.components.*
+import com.trabajo.minitienda.ui.components.AppCard
+import com.trabajo.minitienda.ui.components.PageLayout
 import com.trabajo.minitienda.ui.theme.*
+import com.trabajo.minitienda.utils.ThemeManager
 
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    onMenuClick: () -> Unit ) {
+    onMenuClick: () -> Unit,
+    themeManager: ThemeManager
+) {
+    val isDarkTheme by themeManager.isDarkTheme.collectAsState()
+
     PageLayout(
         title = "Perfil",
-        onMenuClick = { /* TODO: Open drawer */ }
+        onMenuClick = onMenuClick
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Cabecera de perfil
-            ProfileHeader()
-            
-            // Información de la tienda
-            StoreInfoCard()
-            
-            // Configuraciones
-            SettingsCard()
-            
+            // Cabecera del perfil editable
+            ProfileHeaderEditable()
+
+            // Información de la tienda editable
+            StoreInfoCardEditable()
+
+            // Configuraciones (CON SWITCH DE TEMA)
+            SettingsSection(
+                isDarkTheme = isDarkTheme,
+                onThemeToggle = { themeManager.toggleTheme() }
+            )
+
             // Botón de cerrar sesión
             AppCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Button(
-                    onClick = { /* TODO */ },
-                    colors = buttonColors(
-                        containerColor = ErrorColor
-                    ),
+                    onClick = {
+                        navController.navigate("login") {
+                            popUpTo("profile") { inclusive = true }
+                        }
+                    },
+                    colors = buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
@@ -67,145 +80,153 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileHeader() {
-    AppCard(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(PrimaryGreen),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = CardBackground,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
-            
-            // Información del usuario
-            Column {
-                Text(
-                    text = "Juan Pérez",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Text(
-                    text = "Administrador",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = SecondaryText
-                )
-                Text(
-                    text = "juan.perez@example.com",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
-                )
-            }
-        }
-    }
-}
+private fun ProfileHeaderEditable() {
+    var editing by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("Juan Pérez") }
+    var role by remember { mutableStateOf("Administrador") }
+    var email by remember { mutableStateOf("juan.perez@example.com") }
 
-@Composable
-private fun StoreInfoCard() {
-    AppCard(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Información de la Tienda",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                InfoRow(
-                    icon = Icons.Default.Store,
-                    label = "Nombre",
-                    value = "Bodega La Esquina"
-                )
-                InfoRow(
-                    icon = Icons.Default.LocationOn,
-                    label = "Dirección",
-                    value = "Av. Lima 123, San Miguel"
-                )
-                InfoRow(
-                    icon = Icons.Default.Phone,
-                    label = "Teléfono",
-                    value = "(01) 555-1234"
-                )
-                InfoRow(
-                    icon = Icons.Default.Numbers,
-                    label = "RUC",
-                    value = "20123456789"
-                )
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    if (editing) {
+                        TextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("Nombre") },
+                            singleLine = true
+                        )
+                        TextField(
+                            value = role,
+                            onValueChange = { role = it },
+                            label = { Text("Rol") },
+                            singleLine = true
+                        )
+                        TextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            singleLine = true
+                        )
+                    } else {
+                        Text(text = name, style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            text = role,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = email,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
             }
 
             OutlinedButton(
-                onClick = { /* TODO */ },
+                onClick = { editing = !editing },
                 modifier = Modifier.align(Alignment.End)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Edit,
+                    imageVector = if (editing) Icons.Default.Check else Icons.Default.Edit,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Editar Información")
+                Text(if (editing) "Guardar" else "Editar")
             }
         }
     }
 }
 
 @Composable
-private fun SettingsCard() {
-    AppCard(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Configuración",
-                style = MaterialTheme.typography.titleMedium
-            )
-            
-            Column {
-                SettingItem(
-                    icon = Icons.Default.Notifications,
-                    title = "Notificaciones",
-                    subtitle = "Alertas de stock bajo y ventas"
+private fun StoreInfoCardEditable() {
+    var editing by remember { mutableStateOf(false) }
+    var storeName by remember { mutableStateOf("Bodega La Esquina") }
+    var address by remember { mutableStateOf("Av. Lima 123, San Miguel") }
+    var phone by remember { mutableStateOf("(01) 555-1234") }
+    var ruc by remember { mutableStateOf("20123456789") }
+
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(text = "Información de la Tienda", style = MaterialTheme.typography.titleMedium)
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (editing) {
+                    EditableInfoRow(Icons.Default.Store, "Nombre", storeName) { storeName = it }
+                    EditableInfoRow(Icons.Default.LocationOn, "Dirección", address) { address = it }
+                    EditableInfoRow(Icons.Default.Phone, "Teléfono", phone) { phone = it }
+                    EditableInfoRow(Icons.Default.Numbers, "RUC", ruc) { ruc = it }
+                } else {
+                    InfoRow(Icons.Default.Store, "Nombre", storeName)
+                    InfoRow(Icons.Default.LocationOn, "Dirección", address)
+                    InfoRow(Icons.Default.Phone, "Teléfono", phone)
+                    InfoRow(Icons.Default.Numbers, "RUC", ruc)
+                }
+            }
+
+            OutlinedButton(
+                onClick = { editing = !editing },
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Icon(
+                    imageVector = if (editing) Icons.Default.Check else Icons.Default.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
                 )
-                Divider()
-                SettingItem(
-                    icon = Icons.Default.Security,
-                    title = "Seguridad",
-                    subtitle = "Contraseña y autenticación"
-                )
-                Divider()
-                SettingItem(
-                    icon = Icons.Default.Print,
-                    title = "Impresión",
-                    subtitle = "Configurar impresora de tickets"
-                )
-                Divider()
-                SettingItem(
-                    icon = Icons.Default.Language,
-                    title = "Idioma",
-                    subtitle = "Español (Perú)"
-                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (editing) "Guardar" else "Editar Información")
             }
         }
+    }
+}
+
+@Composable
+private fun EditableInfoRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(label) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -223,29 +244,82 @@ private fun InfoRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = PrimaryGreen,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
         Column {
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
-                color = SecondaryText
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Text(text = value, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
 
 @Composable
-private fun SettingItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String
+private fun SettingsSection(
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit
 ) {
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = "Configuraciones", style = MaterialTheme.typography.titleMedium)
+
+            SettingItem(Icons.Default.Notifications, "Notificaciones", "Activar o desactivar alertas")
+
+            // ITEM DE TEMA CON SWITCH FUNCIONAL
+            ThemeSettingItem(
+                isDarkTheme = isDarkTheme,
+                onThemeToggle = onThemeToggle
+            )
+
+            SettingItem(Icons.Default.Language, "Idioma", "Español (predeterminado)")
+        }
+    }
+}
+
+@Composable
+private fun ThemeSettingItem(
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onThemeToggle() }
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.ColorLens,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = "Tema", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = if (isDarkTheme) "Modo oscuro activado" else "Modo claro activado",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
+        Switch(
+            checked = isDarkTheme,
+            onCheckedChange = { onThemeToggle() },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            )
+        )
+    }
+}
+
+@Composable
+private fun SettingItem(icon: ImageVector, title: String, subtitle: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -256,26 +330,21 @@ private fun SettingItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = PrimaryGreen,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium
-            )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.bodyMedium)
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = SecondaryText
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = SecondaryText
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
     }
 }
