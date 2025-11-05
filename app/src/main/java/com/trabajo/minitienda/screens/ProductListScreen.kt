@@ -1,5 +1,9 @@
 package com.trabajo.minitienda.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -44,20 +48,22 @@ fun ProductListScreen(
 ) {
     val products by productViewModel.products.collectAsState()
 
-    // estado del buscador (sobrevive a recomposiciones y rotación)
     var query by rememberSaveable { mutableStateOf("") }
 
-    // lista filtrada (reactiva y eficiente)
-    val filteredProducts by remember(products, query) {
+    // <<< NUEVO: ids ocultos (persiste en rotación/nav) >>>
+    val hiddenIds = rememberSaveable { mutableStateListOf<Int>() } // usa Long si tu id es Long
+
+    val filteredProducts by remember(products, query, hiddenIds) {
         derivedStateOf {
             val q = query.trim().lowercase()
-            if (q.isBlank()) products
-            else products.filter { p ->
+            val base = if (q.isBlank()) products else products.filter { p ->
                 val name = p.name.lowercase()
                 val code = p.code.lowercase()
                 val desc = p.descripcion?.lowercase().orEmpty()
                 name.contains(q) || code.contains(q) || desc.contains(q)
             }
+            // <<< NUEVO: excluye los ocultos >>>
+            base.filter { it.id !in hiddenIds }
         }
     }
 
@@ -78,26 +84,19 @@ fun ProductListScreen(
                 placeholder = "Buscar por nombre, código o descripción"
             )
 
-            // Muestra el total de resultados filtrados
-            ActionsRow(
-                navController = navController,
-                count = filteredProducts.size
-            )
+            ActionsRow(navController = navController, count = filteredProducts.size)
 
             if (filteredProducts.isEmpty()) {
-                // vacío con feedback
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Sin resultados para “$query”.", color = SecondaryText)
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Text(if (query.isBlank()) "No hay productos aún" else "Sin resultados para “$query”.", color = SecondaryText)
                 }
             } else {
                 ProductList(
                     products = filteredProducts,
-                    onDelete = { product -> productViewModel.deleteProduct(product) },
+                    onDelete = { product ->
+                        // <<< NUEVO: solo ocultar visualmente >>>
+                        if (product.id !in hiddenIds) hiddenIds.add(product.id)
+                    },
                     onEdit = { product -> navController.navigate("product_registration/${product.id}") }
                 )
             }
@@ -134,10 +133,7 @@ private fun ProductList(
     onEdit: (Product) -> Unit
 ) {
     if (products.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No hay productos aún")
         }
     } else {
@@ -152,6 +148,7 @@ private fun ProductList(
         }
     }
 }
+
 
 @Composable
 private fun ProductCard(
