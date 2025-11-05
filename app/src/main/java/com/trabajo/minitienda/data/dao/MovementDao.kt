@@ -21,4 +21,11 @@ interface MovementDao {
         ORDER BY fecha DESC
     """)
     fun todayMovements(): Flow<List<MovimientoInventario>>
+
+
+    @Query("""
+        DELETE FROM movimiento_inventario
+        WHERE date(fecha/1000,'unixepoch') = date('now','unixepoch')
+    """)
+    suspend fun deleteTodayMovements()
 }
