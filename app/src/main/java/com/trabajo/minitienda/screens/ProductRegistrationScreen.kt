@@ -233,8 +233,6 @@ fun ProductRegistrationScreen(
                     }
                 }
 
-                ImageUploadSection()
-
                 // --------- Acciones ----------
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     OutlinedButton(

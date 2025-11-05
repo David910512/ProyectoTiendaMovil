@@ -41,11 +41,11 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import androidx.room.Room
 import com.trabajo.minitienda.data.database.AppDatabase
-import com.trabajo.minitienda.data.database.AppDbProvider
 import com.trabajo.minitienda.repository.CategoryRepository
 import com.trabajo.minitienda.repository.ProductRepository
 import com.trabajo.minitienda.repository.PurchaseRepository
 import com.trabajo.minitienda.repository.SaleRepository
+import com.trabajo.minitienda.utils.ThemeManager
 import com.trabajo.minitienda.viewmodel.CashClosureViewModel
 import com.trabajo.minitienda.viewmodel.CashClosureViewModelFactory
 import com.trabajo.minitienda.viewmodel.CategoryViewModel
@@ -68,7 +68,7 @@ private data class DrawerItem(
 )
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(themeManager: ThemeManager) {
     val navController = rememberNavController()
     val context = LocalContext.current
 
@@ -184,8 +184,9 @@ fun MainNavigation() {
             }
         }
     ) {
-        NavHost(navController = navController, startDestination = "dashboard") {
+        NavHost(navController = navController, startDestination = "login") {
 
+            composable("login") { LoginScreen(navController) }
             composable("dashboard") {
                 // OJO: aquí va la **instancia** salesViewModel, no la clase
                 DashboardScreen(
@@ -239,7 +240,8 @@ fun MainNavigation() {
             }
 
             composable("profile") {
-                ProfileScreen(navController, onMenuClick = openDrawer)
+                ProfileScreen(
+                    navController, onMenuClick = openDrawer, themeManager = themeManager )
             }
         }
     }
