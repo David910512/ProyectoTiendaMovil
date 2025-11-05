@@ -1,5 +1,7 @@
 package com.trabajo.minitienda.screens
 
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,9 +21,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.trabajo.minitienda.data.dao.MovementDao
+import com.trabajo.minitienda.data.dao.PurchaseDao
 import com.trabajo.minitienda.ui.components.AppCard
 import com.trabajo.minitienda.ui.components.PageLayout
 import com.trabajo.minitienda.ui.theme.PrimaryGreen
@@ -33,13 +38,14 @@ import java.util.Locale
 fun CashClosureScreen(
     navController: NavController,
     vm: CashClosureViewModel,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
 ) {
     val salesTotal by vm.salesTotal.collectAsState()
     val purchasesTotal by vm.purchasesTotal.collectAsState()
     val netIncome by vm.netIncome.collectAsState()
     val salesCount by vm.salesCount.collectAsState()
     val avgTicket by vm.avgTicket.collectAsState()
+
 
     PageLayout(title = "Cierre de Caja", onMenuClick = onMenuClick) {
         Column(
@@ -121,22 +127,59 @@ fun CashClosureScreen(
                 Column(Modifier.fillMaxWidth().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
+                    val context = LocalContext.current
+
                     Button(
-                        onClick = { vm.generateReport { } },
+                        onClick = {
+                            vm.generateReport(context) { uri ->
+                                if (uri != null) {
+                                    // Aquí puedes abrir un share sheet para descargar/compartir el CSV
+                                    val intent = android.content.Intent().apply {
+                                        action = android.content.Intent.ACTION_SEND
+                                        type = "text/csv"
+                                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(
+                                        android.content.Intent.createChooser(intent, "Compartir reporte")
+                                    )
+                                } else {
+                                    Toast.makeText(context, "Error generando reporte", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp))
+                        Icon(Icons.Default.Download, null)
+                        Spacer(Modifier.width(8.dp))
                         Text("Generar Reporte")
                     }
+                    var isResetting by remember { mutableStateOf(false) }
 
                     OutlinedButton(
-                        onClick = { vm.resetDay { } },
+                        onClick = {
+                            isResetting = true
+                            vm.resetDay {
+                                isResetting = false
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp))
-                        Text("Reiniciar Día")
+                        if (isResetting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = PrimaryGreen,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Reiniciando...")
+                        } else {
+                            Icon(Icons.Default.Refresh, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Reiniciar Día")
+                        }
                     }
 
                     WarningNote()
@@ -145,6 +188,7 @@ fun CashClosureScreen(
         }
     }
 }
+
 
 /* ======= UI helpers, mismo patrón visual que tus tarjetas ======= */
 

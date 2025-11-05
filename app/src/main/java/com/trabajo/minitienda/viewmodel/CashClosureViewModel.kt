@@ -1,5 +1,8 @@
 package com.trabajo.minitienda.viewmodel
 
+import android.content.Context
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trabajo.minitienda.data.dao.MovementDao
@@ -8,11 +11,13 @@ import com.trabajo.minitienda.data.dao.SaleDao
 import com.trabajo.minitienda.data.model.MovimientoInventario
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 
 class CashClosureViewModel(
-    saleDao: SaleDao,
-    purchaseDao: PurchaseDao,
-    private val movementDao: MovementDao
+    private val saleDao: SaleDao,
+    private val movementDao: MovementDao,
+    private val purchaseDao: PurchaseDao,
 ) : ViewModel() {
 
     val salesTotal: StateFlow<Double> =
@@ -37,13 +42,40 @@ class CashClosureViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun resetDay(onDone: () -> Unit) = viewModelScope.launch {
-        // Aquí NO borramos ventas/compras reales por seguridad.
-        // Si quieres “reiniciar”, crea un endpoint/DAO específico y úsalo aquí.
+        saleDao.deleteTodaySales()
+        purchaseDao.deleteTodayPurchases()
+        movementDao.deleteTodayMovements()
         onDone()
     }
 
-    fun generateReport(onDone: () -> Unit) = viewModelScope.launch {
-        // Genera un PDF/CSV si quieres; por ahora solo callback.
-        onDone()
+    fun generateReport(context: Context, onDone: (Uri?) -> Unit) = viewModelScope.launch {
+        try {
+            val fileName = "reporte_cierre.csv"
+            val file = File(context.cacheDir, fileName)
+
+            val csvHeader = "Concepto,Valor\n"
+
+            val csvData = buildString {
+                append("Total Ventas,${salesTotal.value}\n")
+                append("Total Compras,${purchasesTotal.value}\n")
+                append("Ganancia Neta,${netIncome.value}\n")
+                append("Cantidad de Ventas,${salesCount.value}\n")
+                append("Ticket Promedio,${avgTicket.value}\n")
+                append("Ticket Promedio,${movementsToday.value}\n")
+            }
+
+            FileOutputStream(file).use { it.write((csvHeader + csvData).toByteArray()) }
+
+            val uri: Uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+
+            onDone(uri)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            onDone(null)
+        }
     }
 }

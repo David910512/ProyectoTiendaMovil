@@ -62,5 +62,16 @@ interface SaleDao {
         LIMIT 1
     """)
     fun lastSaleBrief(): Flow<SaleBrief?>
+
+    @Query("""
+        DELETE FROM venta
+        WHERE DATE(fecha / 1000, 'unixepoch', 'localtime') = DATE('now','localtime')
+    """)
+
+    suspend fun deleteTodaySales()
+
+
+
+
 }
 

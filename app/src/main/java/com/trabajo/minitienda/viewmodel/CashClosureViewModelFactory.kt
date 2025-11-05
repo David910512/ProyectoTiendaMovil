@@ -14,7 +14,7 @@ class CashClosureViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CashClosureViewModel::class.java)) {
-            return CashClosureViewModel(saleDao, purchaseDao, movementDao) as T
+            return CashClosureViewModel(saleDao, movementDao, purchaseDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

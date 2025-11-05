@@ -32,4 +32,10 @@ interface PurchaseDao {
         WHERE DATE(fecha / 1000, 'unixepoch', 'localtime') = DATE('now','localtime')
     """)
     fun todayPurchasesCount(): Flow<Int>
+
+    @Query("""
+        DELETE FROM compra
+        WHERE DATE(fecha / 1000, 'unixepoch', 'localtime') = DATE('now','localtime')
+    """)
+    suspend fun deleteTodayPurchases()
 }
